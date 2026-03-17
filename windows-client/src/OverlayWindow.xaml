@@ -1,0 +1,18 @@
+<Window x:Class="WindowsStepGuide.Client.OverlayWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="Highlight Overlay"
+        WindowStyle="None"
+        ResizeMode="NoResize"
+        ShowInTaskbar="False"
+        ShowActivated="False"
+        Topmost="True"
+        Background="Transparent"
+        AllowsTransparency="True">
+    <Grid Background="Transparent">
+        <Border BorderBrush="#FFF08A24"
+                BorderThickness="2"
+                CornerRadius="6"
+                Background="#14F08A24" />
+    </Grid>
+</Window>
