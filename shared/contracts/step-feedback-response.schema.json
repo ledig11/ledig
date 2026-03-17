@@ -1,0 +1,30 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "StepFeedbackResponse",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "accepted",
+    "session_id",
+    "step_id",
+    "feedback_type",
+    "message"
+  ],
+  "properties": {
+    "accepted": {
+      "type": "boolean"
+    },
+    "session_id": {
+      "type": "string"
+    },
+    "step_id": {
+      "type": "string"
+    },
+    "feedback_type": {
+      "type": "string"
+    },
+    "message": {
+      "type": "string"
+    }
+  }
+}

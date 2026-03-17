@@ -3,7 +3,7 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         Title="Windows Step Guide"
         Width="360"
-        Height="500"
+        Height="730"
         Topmost="True"
         ResizeMode="NoResize"
         WindowStartupLocation="Manual"
@@ -23,9 +23,30 @@
                        FontWeight="Bold" />
             <TextBox Text="{Binding TaskText, UpdateSourceTrigger=PropertyChanged}"
                      Margin="0,6,0,12" />
-            <Button Content="分析下一步"
-                    Height="32"
-                    Click="AnalyzeButton_Click" />
+            <UniformGrid Columns="4"
+                         Margin="0,0,0,0">
+                <Button Content="{Binding AnalyzeNextButtonText}"
+                        Height="32"
+                        Margin="0,0,4,0"
+                        IsEnabled="{Binding CanAnalyze}"
+                        Click="AnalyzeButton_Click" />
+                <Button Content="{Binding ReanalyzeButtonText}"
+                        x:Name="ReanalyzeButton"
+                        Height="32"
+                        Margin="4,0,4,0"
+                        IsEnabled="{Binding CanAnalyze}"
+                        Click="ReanalyzeButton_Click" />
+                <Button Content="这一步不对"
+                        Height="32"
+                        Margin="4,0,4,0"
+                        IsEnabled="{Binding CanAnalyze}"
+                        Click="IncorrectStepButton_Click" />
+                <Button Content="已完成"
+                        Height="32"
+                        Margin="4,0,0,0"
+                        IsEnabled="{Binding CanAnalyze}"
+                        Click="CompletedStepButton_Click" />
+            </UniformGrid>
             <TextBlock Text="下一步"
                        FontWeight="Bold"
                        Margin="0,16,0,6" />
@@ -79,6 +100,54 @@
                                FontStyle="Italic"
                                Visibility="{Binding HasNoHighlight, Converter={StaticResource BooleanToVisibilityConverter}}" />
                 </Grid>
+            </Border>
+            <TextBlock Text="Local Feedback"
+                       FontWeight="Bold"
+                       Margin="0,16,0,6" />
+            <Border Background="#FFFFFFFF"
+                    BorderBrush="#FFD8D8D0"
+                    BorderThickness="1"
+                    CornerRadius="6"
+                    Padding="10">
+                <TextBlock Text="{Binding LastFeedbackText}"
+                           Foreground="#FF666666"
+                           TextWrapping="Wrap"
+                           MinHeight="64" />
+            </Border>
+            <TextBlock Text="Debug / Current Context"
+                       FontWeight="Bold"
+                       Margin="0,16,0,6" />
+            <Border Background="#FFFFFFFF"
+                    BorderBrush="#FFD8D8D0"
+                    BorderThickness="1"
+                    CornerRadius="6"
+                    Padding="10">
+                <StackPanel>
+                    <TextBlock Text="{Binding CurrentSessionId, StringFormat=session_id: {0}}"
+                               Foreground="#FF666666"
+                               TextWrapping="Wrap" />
+                    <TextBlock Text="{Binding CurrentStepId, StringFormat=step_id: {0}}"
+                               Foreground="#FF666666"
+                               TextWrapping="Wrap"
+                               Margin="0,4,0,0" />
+                    <TextBlock Text="{Binding LastFeedbackType, StringFormat=last_feedback_type: {0}}"
+                               Foreground="#FF666666"
+                               TextWrapping="Wrap"
+                               Margin="0,4,0,0" />
+                </StackPanel>
+            </Border>
+            <TextBlock Text="Observation Summary"
+                       FontWeight="Bold"
+                       Margin="0,16,0,6" />
+            <Border Background="#FFFFFFFF"
+                    BorderBrush="#FFD8D8D0"
+                    BorderThickness="1"
+                    CornerRadius="6"
+                    Padding="10">
+                <TextBlock Text="{Binding LastObservationSummary}"
+                           Foreground="#FF666666"
+                           TextWrapping="Wrap"
+                           MinHeight="64" />
             </Border>
             <TextBlock Text="{Binding StatusMessage}"
                        Margin="0,10,0,0"

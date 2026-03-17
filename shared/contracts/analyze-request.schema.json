@@ -3,12 +3,43 @@
   "title": "AnalyzeRequest",
   "type": "object",
   "additionalProperties": false,
-  "required": ["task_text"],
+  "required": ["task_text", "observation"],
   "properties": {
     "task_text": {
       "type": "string",
       "minLength": 1,
       "maxLength": 500
+    },
+    "observation": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "captured_at_utc",
+        "foreground_window_title",
+        "screen_width",
+        "screen_height",
+        "screenshot_ref"
+      ],
+      "properties": {
+        "session_id": {
+          "type": ["string", "null"]
+        },
+        "captured_at_utc": {
+          "type": "string"
+        },
+        "foreground_window_title": {
+          "type": "string"
+        },
+        "screen_width": {
+          "type": "integer"
+        },
+        "screen_height": {
+          "type": "integer"
+        },
+        "screenshot_ref": {
+          "type": "string"
+        }
+      }
     }
   }
 }

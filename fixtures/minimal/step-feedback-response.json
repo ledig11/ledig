@@ -1,0 +1,7 @@
+{
+  "accepted": true,
+  "session_id": "mock-session-001",
+  "step_id": "step-001",
+  "feedback_type": "incorrect",
+  "message": "feedback received"
+}

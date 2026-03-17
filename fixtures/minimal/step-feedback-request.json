@@ -1,0 +1,6 @@
+{
+  "session_id": "mock-session-001",
+  "step_id": "step-001",
+  "feedback_type": "incorrect",
+  "comment": "当前建议不适用，请重新分析。"
+}

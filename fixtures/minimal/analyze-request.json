@@ -1,3 +1,11 @@
 {
-  "task_text": "打开设置"
+  "task_text": "打开设置",
+  "observation": {
+    "session_id": null,
+    "captured_at_utc": "2026-03-17T00:00:00Z",
+    "foreground_window_title": "Windows Step Guide Panel",
+    "screen_width": 1280,
+    "screen_height": 720,
+    "screenshot_ref": "placeholder://no-screenshot"
+  }
 }
