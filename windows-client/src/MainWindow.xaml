@@ -1,0 +1,56 @@
+<Window x:Class="WindowsStepGuide.Client.MainWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="Windows Step Guide"
+        Width="360"
+        Height="340"
+        Topmost="True"
+        ResizeMode="NoResize"
+        WindowStartupLocation="Manual"
+        Left="1520"
+        Top="80"
+        Background="#FFF7F7F2">
+    <Border Padding="16">
+        <StackPanel>
+            <TextBlock Text="Windows Step Guide"
+                       FontSize="18"
+                       FontWeight="SemiBold"
+                       Margin="0,0,0,8" />
+            <TextBlock Text="任务"
+                       FontWeight="Bold" />
+            <TextBox Text="{Binding TaskText, UpdateSourceTrigger=PropertyChanged}"
+                     Margin="0,6,0,12" />
+            <Button Content="分析下一步"
+                    Height="32"
+                    Click="AnalyzeButton_Click" />
+            <TextBlock Text="下一步"
+                       FontWeight="Bold"
+                       Margin="0,16,0,6" />
+            <Border Background="#FFFFFFFF"
+                    BorderBrush="#FFD8D8D0"
+                    BorderThickness="1"
+                    CornerRadius="6"
+                    Padding="10">
+                <TextBlock Text="{Binding Instruction}"
+                           TextWrapping="Wrap"
+                           MinHeight="56" />
+            </Border>
+            <TextBlock Text="Highlight"
+                       FontWeight="Bold"
+                       Margin="0,16,0,6" />
+            <Border Background="#FFFFFFFF"
+                    BorderBrush="#FFD8D8D0"
+                    BorderThickness="1"
+                    CornerRadius="6"
+                    Padding="10">
+                <TextBlock Text="{Binding HighlightText}"
+                           TextWrapping="Wrap"
+                           MinHeight="40" />
+            </Border>
+            <TextBlock Text="{Binding StatusMessage}"
+                       Margin="0,10,0,0"
+                       Foreground="#FF666666"
+                       TextWrapping="Wrap" />
+        </StackPanel>
+    </Border>
+</Window>

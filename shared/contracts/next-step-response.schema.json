@@ -1,0 +1,57 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "NextStepResponse",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "session_id",
+    "step_id",
+    "instruction",
+    "action_type",
+    "requires_user_action",
+    "highlight"
+  ],
+  "properties": {
+    "session_id": {
+      "type": "string"
+    },
+    "step_id": {
+      "type": "string"
+    },
+    "instruction": {
+      "type": "string"
+    },
+    "action_type": {
+      "type": "string"
+    },
+    "requires_user_action": {
+      "type": "boolean"
+    },
+    "highlight": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["rect"],
+      "properties": {
+        "rect": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["x", "y", "width", "height"],
+          "properties": {
+            "x": {
+              "type": "integer"
+            },
+            "y": {
+              "type": "integer"
+            },
+            "width": {
+              "type": "integer"
+            },
+            "height": {
+              "type": "integer"
+            }
+          }
+        }
+      }
+    }
+  }
+}
