@@ -37,10 +37,15 @@ class ObservationDto(BaseModel):
     foreground_window_uia_child_count: int
     foreground_window_uia_child_summary: str
     foreground_window_actionable_summary: str
+    foreground_window_candidate_count: Optional[int] = None
+    foreground_window_scan_node_count: Optional[int] = None
+    foreground_window_scan_depth: Optional[int] = None
     foreground_window_candidate_elements: list[ObservationCandidateElementDto]
     screen_width: int
     screen_height: int
     screenshot_ref: str
+    screenshot_status: Optional[str] = None
+    screenshot_local_path: Optional[str] = None
 
 
 class AnalyzeRequest(BaseModel):
@@ -151,9 +156,37 @@ class AnalyzeDiagnosticEntry(BaseModel):
     model_type: Optional[str]
     target_candidate_ui_path: Optional[str]
     target_candidate_label: Optional[str]
+    observation_candidate_count: int
+    observation_scan_node_count: Optional[int]
+    observation_scan_depth: Optional[int]
+    observation_quality: str
     planner_error_code: Optional[str]
     planner_error: Optional[str]
     raw_model_response_excerpt: Optional[str]
+
+
+class DiagnosticTimelineEntry(BaseModel):
+    diagnostic_created_at_utc: str
+    observation_captured_at_utc: Optional[str]
+    task_text: Optional[str]
+    session_id: str
+    step_id: str
+    action_type: Optional[str]
+    planner_source: str
+    prompt_version: Optional[str]
+    response_schema_version: Optional[str]
+    model_provider: Optional[str]
+    model_type: Optional[str]
+    target_candidate_ui_path: Optional[str]
+    target_candidate_label: Optional[str]
+    observation_candidate_count: int
+    observation_scan_node_count: Optional[int]
+    observation_scan_depth: Optional[int]
+    observation_quality: str
+    foreground_window_title: Optional[str]
+    screenshot_ref: Optional[str]
+    planner_error_code: Optional[str]
+    planner_error: Optional[str]
 
 
 class SessionSummaryEntry(BaseModel):
@@ -163,6 +196,32 @@ class SessionSummaryEntry(BaseModel):
     last_action_type: Optional[str]
     last_feedback_type: Optional[str]
     last_updated_at_utc: str
+
+
+class SessionReplayEventEntry(BaseModel):
+    created_at_utc: str
+    event_type: str
+    session_id: str
+    step_id: Optional[str]
+    action_type: Optional[str]
+    feedback_type: Optional[str]
+    planner_source: Optional[str]
+    observation_quality: Optional[str]
+    screenshot_ref: Optional[str]
+    note: Optional[str]
+
+
+class RealtimeEventEntry(BaseModel):
+    event_type: str
+    created_at_utc: str
+    session_id: str
+    step_id: Optional[str]
+    action_type: Optional[str]
+    feedback_type: Optional[str]
+    planner_source: Optional[str]
+    observation_quality: Optional[str]
+    screenshot_ref: Optional[str]
+    note: Optional[str]
 
 
 class SessionStateEntry(BaseModel):

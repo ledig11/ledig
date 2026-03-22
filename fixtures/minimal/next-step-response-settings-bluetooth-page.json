@@ -1,0 +1,15 @@
+{
+  "session_id": "mock-session-9afb7a66",
+  "step_id": "scenario-confirm-bluetooth-page",
+  "instruction": "你已经进入“蓝牙和设备”相关页面。请确认目标开关或入口是否出现，再继续下一步操作。",
+  "action_type": "confirm_bluetooth_page",
+  "requires_user_action": true,
+  "highlight": {
+    "rect": {
+      "x": 520,
+      "y": 188,
+      "width": 132,
+      "height": 40
+    }
+  }
+}

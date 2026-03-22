@@ -19,10 +19,15 @@ public sealed class ObservationDto
     public int ForegroundWindowUiaChildCount { get; set; }
     public string ForegroundWindowUiaChildSummary { get; set; } = string.Empty;
     public string ForegroundWindowActionableSummary { get; set; } = string.Empty;
+    public int ForegroundWindowCandidateCount { get; set; }
+    public int ForegroundWindowScanNodeCount { get; set; }
+    public int ForegroundWindowScanDepth { get; set; }
     public List<ObservationCandidateElementDto> ForegroundWindowCandidateElements { get; set; } = [];
     public int ScreenWidth { get; set; }
     public int ScreenHeight { get; set; }
     public string ScreenshotRef { get; set; } = string.Empty;
+    public string? ScreenshotStatus { get; set; }
+    public string? ScreenshotLocalPath { get; set; }
 }
 
 public sealed class ObservationCandidateElementDto

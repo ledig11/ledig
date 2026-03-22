@@ -1,0 +1,15 @@
+{
+  "session_id": "mock-session-2ad320be",
+  "step_id": "scenario-open-network-settings",
+  "instruction": "这是“打开设置并进入网络和 Internet”的场景。请先点击这个入口：ControlType.Button:网络和 Internet (automation_id=SystemSettings_Network, path=foreground-window/child[2])。",
+  "action_type": "open_network_settings",
+  "requires_user_action": true,
+  "highlight": {
+    "rect": {
+      "x": 44,
+      "y": 264,
+      "width": 190,
+      "height": 36
+    }
+  }
+}

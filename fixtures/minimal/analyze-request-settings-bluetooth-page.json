@@ -1,0 +1,72 @@
+{
+  "task_text": "打开设置并进入蓝牙和设备",
+  "observation": {
+    "session_id": "mock-session-9afb7a66",
+    "captured_at_utc": "2026-03-22T00:02:00Z",
+    "foreground_window_title": "蓝牙和设备",
+    "foreground_window_uia_name": "设置",
+    "foreground_window_uia_automation_id": "SystemSettings",
+    "foreground_window_uia_class_name": "ApplicationFrameWindow",
+    "foreground_window_uia_control_type": "ControlType.Window",
+    "foreground_window_uia_is_enabled": true,
+    "foreground_window_uia_child_count": 3,
+    "foreground_window_uia_child_summary": "ControlType.Button:添加设备 | ControlType.Button:设备 | ControlType.Text:蓝牙",
+    "foreground_window_actionable_summary": "window_kind=settings; title=蓝牙和设备; control_type=ControlType.Window; child_count=3; candidate_count=3; child_summary=ControlType.Button:添加设备 | ControlType.Button:设备 | ControlType.Text:蓝牙",
+    "foreground_window_candidate_elements": [
+      {
+        "name": "添加设备",
+        "automation_id": "BluetoothAddDeviceButton",
+        "class_name": "Button",
+        "control_type": "ControlType.Button",
+        "is_enabled": true,
+        "is_offscreen": false,
+        "is_keyboard_focusable": true,
+        "has_keyboard_focus": true,
+        "ui_path": "foreground-window/child[0]",
+        "bounding_rect": {
+          "x": 520,
+          "y": 188,
+          "width": 132,
+          "height": 40
+        }
+      },
+      {
+        "name": "设备",
+        "automation_id": "DevicesSection",
+        "class_name": "TextBlock",
+        "control_type": "ControlType.Text",
+        "is_enabled": true,
+        "is_offscreen": false,
+        "is_keyboard_focusable": false,
+        "has_keyboard_focus": false,
+        "ui_path": "foreground-window/child[1]",
+        "bounding_rect": {
+          "x": 508,
+          "y": 252,
+          "width": 88,
+          "height": 24
+        }
+      },
+      {
+        "name": "蓝牙",
+        "automation_id": "BluetoothToggle",
+        "class_name": "ToggleSwitch",
+        "control_type": "ControlType.Button",
+        "is_enabled": true,
+        "is_offscreen": false,
+        "is_keyboard_focusable": true,
+        "has_keyboard_focus": false,
+        "ui_path": "foreground-window/child[2]",
+        "bounding_rect": {
+          "x": 760,
+          "y": 252,
+          "width": 76,
+          "height": 32
+        }
+      }
+    ],
+    "screen_width": 1280,
+    "screen_height": 720,
+    "screenshot_ref": "local://observation/20260322/000200/9a1b2c3f"
+  }
+}

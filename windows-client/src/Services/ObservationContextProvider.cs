@@ -44,10 +44,15 @@ public sealed class ObservationContextProvider : IObservationContextProvider
             ForegroundWindowActionableSummary = BuildActionableSummary(
                 GetForegroundWindowTitle(),
                 automationSnapshot),
+            ForegroundWindowCandidateCount = automationSnapshot.CandidateElements.Count,
+            ForegroundWindowScanNodeCount = automationSnapshot.ScannedNodeCount,
+            ForegroundWindowScanDepth = automationSnapshot.MaxDepthReached,
             ForegroundWindowCandidateElements = automationSnapshot.CandidateElements,
             ScreenWidth = screenWidth,
             ScreenHeight = screenHeight,
             ScreenshotRef = GenerateScreenshotRef(capturedAtUtc),
+            ScreenshotStatus = "not_captured_yet",
+            ScreenshotLocalPath = null,
         };
     }
 
@@ -81,7 +86,7 @@ public sealed class ObservationContextProvider : IObservationContextProvider
         }
 
         return
-            $"window_kind={windowKind}; title={normalizedTitle}; control_type={normalizedControlType}; child_count={automationSnapshot.ChildCount}; candidate_count={automationSnapshot.CandidateElements.Count}; child_summary={childSummary}";
+            $"window_kind={windowKind}; title={normalizedTitle}; control_type={normalizedControlType}; child_count={automationSnapshot.ChildCount}; candidate_count={automationSnapshot.CandidateElements.Count}; scanned_nodes={automationSnapshot.ScannedNodeCount}; scan_depth={automationSnapshot.MaxDepthReached}; child_summary={childSummary}";
     }
 
     private static string GenerateScreenshotRef(string capturedAtUtc)

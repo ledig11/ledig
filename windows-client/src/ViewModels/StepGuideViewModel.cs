@@ -27,6 +27,7 @@ public sealed class StepGuideViewModel : INotifyPropertyChanged
     private string _lastObservationAutomationSummary = "暂无前台窗口 UIA 信息。";
     private string _runtimeModelSummary = "模型配置未初始化。";
     private string _statusMessage = "等待请求后端。";
+    private string _realtimeStatus = "实时通道未连接。";
     private string _analyzeNextButtonText = "分析下一步";
     private string _reanalyzeButtonText = "重新分析";
     private bool _canAnalyze = true;
@@ -206,6 +207,12 @@ public sealed class StepGuideViewModel : INotifyPropertyChanged
         private set => SetField(ref _previewHeight, value);
     }
 
+    public string RealtimeStatus
+    {
+        get => _realtimeStatus;
+        private set => SetField(ref _realtimeStatus, value);
+    }
+
     public async Task AnalyzeAsync()
     {
         await AnalyzeAsync(CreateObservation());
@@ -220,6 +227,8 @@ public sealed class StepGuideViewModel : INotifyPropertyChanged
         }
 
         ObservationManifestSaveResult manifestSaveResult = TrySaveObservationManifest(observation);
+        observation.ScreenshotStatus = manifestSaveResult.ScreenshotStatus;
+        observation.ScreenshotLocalPath = manifestSaveResult.ScreenshotLocalPath;
 
         try
         {
@@ -233,7 +242,7 @@ public sealed class StepGuideViewModel : INotifyPropertyChanged
             });
 
             LastObservationSummary =
-                $"foreground_window_title={observation.ForegroundWindowTitle}\nforeground_window_uia_control_type={observation.ForegroundWindowUiaControlType}\nforeground_window_actionable_summary={observation.ForegroundWindowActionableSummary}\ncandidate_element_count={observation.ForegroundWindowCandidateElements.Count}\nscreen={observation.ScreenWidth}x{observation.ScreenHeight}\nscreenshot_ref={observation.ScreenshotRef}";
+                $"foreground_window_title={observation.ForegroundWindowTitle}\nforeground_window_uia_control_type={observation.ForegroundWindowUiaControlType}\nforeground_window_actionable_summary={observation.ForegroundWindowActionableSummary}\nforeground_window_candidate_count={observation.ForegroundWindowCandidateCount}\nforeground_window_scan_node_count={observation.ForegroundWindowScanNodeCount}\nforeground_window_scan_depth={observation.ForegroundWindowScanDepth}\ncandidate_element_count={observation.ForegroundWindowCandidateElements.Count}\nscreen={observation.ScreenWidth}x{observation.ScreenHeight}\nscreenshot_ref={observation.ScreenshotRef}\nscreenshot_status={observation.ScreenshotStatus}\nscreenshot_local_path={observation.ScreenshotLocalPath}";
             LastObservationAssetSummary = FormatObservationAssetSummary(manifestSaveResult);
             LastObservationAutomationSummary = manifestSaveResult.AutomationSummary;
             TryRecordObservation(observation, manifestSaveResult);
@@ -409,6 +418,22 @@ public sealed class StepGuideViewModel : INotifyPropertyChanged
         }
 
         return $"x={rect.X}, y={rect.Y}, width={rect.Width}, height={rect.Height}";
+    }
+
+    public void MarkRealtimeConnected()
+    {
+        RealtimeStatus = "实时通道已连接。";
+    }
+
+    public void MarkRealtimeDisconnected(string reason)
+    {
+        RealtimeStatus = $"实时通道已断开: {reason}";
+    }
+
+    public void MarkRealtimeEventReceived(RealtimeEventDto eventPayload)
+    {
+        RealtimeStatus =
+            $"实时事件: type={eventPayload.EventType}, session={eventPayload.SessionId}, step={eventPayload.StepId}, at={eventPayload.CreatedAtUtc}";
     }
 
     private void UpdateHighlightPreview(HighlightResponse? highlight)

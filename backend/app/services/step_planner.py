@@ -3,9 +3,10 @@ from __future__ import annotations
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
 import hashlib
-from typing import Optional
+import re
+from typing import Callable, Optional
 
-from app.contracts import AnalyzeRequest, HighlightDto, NextStepResponse, ObservationCandidateElementDto, RectDto
+from app.contracts import AnalyzeRequest, HighlightDto, NextStepResponse, ObservationCandidateElementDto, RectDto, SessionStateEntry
 from app.services.model_gateway import ModelGateway, ModelGatewayError
 from app.services.prompt_builder import StepPlannerPromptBuilder
 from app.services.runtime_model import RuntimeModelConfig
@@ -342,7 +343,896 @@ class MockStepPlanner(StepPlanner):
         }.get(kind_part, "unknown")
 
 
+class SettingsBluetoothScenarioPlanner(StepPlanner):
+    def __init__(
+        self,
+        fallback_planner: StepPlanner,
+        session_state_reader: Optional[Callable[[str], Optional[SessionStateEntry]]] = None,
+    ) -> None:
+        self._fallback_planner = fallback_planner
+        self._session_state_reader = session_state_reader
+
+    def analyze(self, request: AnalyzeRequest) -> StepPlannerResult:
+        if not self._is_settings_bluetooth_task(request.task_text):
+            return self._fallback_planner.analyze(request)
+
+        observation = request.observation
+        normalized_task_key = request.task_text.strip().casefold()
+        settings_candidate = self._find_settings_candidate(observation.foreground_window_candidate_elements)
+        session_state = self._read_session_state(observation.session_id)
+        on_settings_window = self._looks_like_settings_window(
+            observation.foreground_window_title,
+            observation.foreground_window_uia_name,
+            observation.foreground_window_uia_automation_id,
+            observation.foreground_window_uia_class_name,
+            observation.foreground_window_actionable_summary,
+        )
+        on_bluetooth_page = self._looks_like_bluetooth_page(
+            observation.foreground_window_title,
+            observation.foreground_window_actionable_summary,
+            observation.foreground_window_candidate_elements,
+        )
+
+        if (
+            session_state is not None
+            and session_state.last_feedback_type == "incorrect"
+            and session_state.current_action_type in {"open_bluetooth_settings", "recover_bluetooth_navigation"}
+            and on_settings_window
+            and not on_bluetooth_page
+        ):
+            response = NextStepResponse(
+                session_id=MockStepPlanner._build_session_id(normalized_task_key),
+                step_id="scenario-recover-bluetooth-navigation",
+                instruction=(
+                    "上一步进入“蓝牙和设备”没有成功。"
+                    "请先确认当前仍在设置窗口左侧导航区域，"
+                    + (
+                        f"然后重新点击这个入口：{MockStepPlanner._format_candidate_label(settings_candidate)}。"
+                        if settings_candidate is not None
+                        else "然后重新查找“蓝牙和设备”入口后再继续。"
+                    )
+                ),
+                action_type="recover_bluetooth_navigation",
+                requires_user_action=True,
+                highlight=HighlightDto(
+                    rect=MockStepPlanner._build_highlight_rect(settings_candidate)
+                ),
+            )
+            return StepPlannerResult(
+                response=response,
+                planner_source="scenario",
+                prompt_version="scenario-settings-bluetooth.v2",
+                response_schema_version="next-step-response.v1",
+                target_candidate_ui_path=settings_candidate.ui_path if settings_candidate is not None else None,
+                target_candidate_label=MockStepPlanner._format_candidate_label(settings_candidate) if settings_candidate is not None else None,
+            )
+
+        if not on_settings_window:
+            response = NextStepResponse(
+                session_id=MockStepPlanner._build_session_id(normalized_task_key),
+                step_id="scenario-open-settings",
+                instruction="这是“打开设置并进入蓝牙和设备”的场景。请先打开 Windows 设置窗口，再继续下一步分析。",
+                action_type="open_settings_app",
+                requires_user_action=True,
+                highlight=HighlightDto(
+                    rect=MockStepPlanner._build_highlight_rect(None)
+                ),
+            )
+            return StepPlannerResult(
+                response=response,
+                planner_source="scenario",
+                prompt_version="scenario-settings-bluetooth.v2",
+                response_schema_version="next-step-response.v1",
+            )
+
+        if on_bluetooth_page:
+            response = NextStepResponse(
+                session_id=MockStepPlanner._build_session_id(normalized_task_key),
+                step_id="scenario-confirm-bluetooth-page",
+                instruction="你已经进入“蓝牙和设备”相关页面。请确认目标开关或入口是否出现，再继续下一步操作。",
+                action_type="confirm_bluetooth_page",
+                requires_user_action=True,
+                highlight=HighlightDto(
+                    rect=MockStepPlanner._build_highlight_rect(settings_candidate)
+                ),
+            )
+            return StepPlannerResult(
+                response=response,
+                planner_source="scenario",
+                prompt_version="scenario-settings-bluetooth.v2",
+                response_schema_version="next-step-response.v1",
+                target_candidate_ui_path=settings_candidate.ui_path if settings_candidate is not None else None,
+                target_candidate_label=MockStepPlanner._format_candidate_label(settings_candidate) if settings_candidate is not None else None,
+            )
+
+        if settings_candidate is not None:
+            response = NextStepResponse(
+                session_id=MockStepPlanner._build_session_id(normalized_task_key),
+                step_id="scenario-open-bluetooth-settings",
+                instruction=(
+                    "这是“打开设置并进入蓝牙和设备”的场景。"
+                    f"请先点击这个入口：{MockStepPlanner._format_candidate_label(settings_candidate)}。"
+                ),
+                action_type="open_bluetooth_settings",
+                requires_user_action=True,
+                highlight=HighlightDto(
+                    rect=MockStepPlanner._build_highlight_rect(settings_candidate)
+                ),
+            )
+            return StepPlannerResult(
+                response=response,
+                planner_source="scenario",
+                prompt_version="scenario-settings-bluetooth.v2",
+                response_schema_version="next-step-response.v1",
+                target_candidate_ui_path=settings_candidate.ui_path,
+                target_candidate_label=MockStepPlanner._format_candidate_label(settings_candidate),
+            )
+
+        response = NextStepResponse(
+            session_id=MockStepPlanner._build_session_id(normalized_task_key),
+            step_id="scenario-search-bluetooth-entry",
+            instruction="设置窗口已经打开，但当前还没有识别到“蓝牙和设备”入口。请先在设置窗口中查找“蓝牙和设备”后再继续分析。",
+            action_type="search_bluetooth_entry",
+            requires_user_action=True,
+            highlight=HighlightDto(
+                rect=MockStepPlanner._build_highlight_rect(None)
+            ),
+        )
+        return StepPlannerResult(
+            response=response,
+            planner_source="scenario",
+            prompt_version="scenario-settings-bluetooth.v2",
+            response_schema_version="next-step-response.v1",
+        )
+
+    def _read_session_state(self, session_id: Optional[str]) -> Optional[SessionStateEntry]:
+        if session_id is None or self._session_state_reader is None:
+            return None
+
+        try:
+            return self._session_state_reader(session_id)
+        except Exception:
+            return None
+
+    @staticmethod
+    def _is_settings_bluetooth_task(task_text: str) -> bool:
+        normalized = task_text.casefold().replace(" ", "")
+        return "设置" in normalized and ("蓝牙" in normalized or "设备" in normalized)
+
+    @staticmethod
+    def _looks_like_settings_window(
+        window_title: str,
+        uia_name: str,
+        automation_id: str,
+        class_name: str,
+        actionable_summary: str,
+    ) -> bool:
+        combined_text = " ".join(
+            value
+            for value in (
+                window_title,
+                uia_name,
+                automation_id,
+                class_name,
+                actionable_summary,
+            )
+            if value
+        ).casefold()
+        return "设置" in combined_text or "systemsettings" in combined_text
+
+    @staticmethod
+    def _looks_like_bluetooth_page(
+        window_title: str,
+        actionable_summary: str,
+        candidates: list[ObservationCandidateElementDto],
+    ) -> bool:
+        combined_text = f"{window_title} {actionable_summary}".casefold()
+        if "title=蓝牙和设备" in combined_text or "title=bluetooth" in combined_text:
+            return True
+
+        bluetooth_page_signals = (
+            "添加设备",
+            "bluetooth & devices",
+            "bluetoothanddevices",
+            "bluetoothsettings",
+            "蓝牙开关",
+            "设备设置",
+        )
+        for candidate in candidates:
+            candidate_text = " ".join(
+                value
+                for value in (candidate.name, candidate.automation_id, candidate.class_name)
+                if value
+            ).casefold()
+            if any(signal in candidate_text for signal in bluetooth_page_signals):
+                return True
+
+        return False
+
+    @staticmethod
+    def _find_settings_candidate(
+        candidates: list[ObservationCandidateElementDto],
+    ) -> Optional[ObservationCandidateElementDto]:
+        for candidate in candidates:
+            candidate_text = " ".join(
+                value
+                for value in (candidate.name, candidate.automation_id, candidate.class_name)
+                if value
+            ).casefold()
+            if "蓝牙和设备" in candidate_text or "bluetooth" in candidate_text:
+                if candidate.bounding_rect.width > 0 and candidate.bounding_rect.height > 0:
+                    return candidate
+        return None
+
+
+class SettingsNetworkScenarioPlanner(StepPlanner):
+    def __init__(
+        self,
+        fallback_planner: StepPlanner,
+        session_state_reader: Optional[Callable[[str], Optional[SessionStateEntry]]] = None,
+    ) -> None:
+        self._fallback_planner = fallback_planner
+        self._session_state_reader = session_state_reader
+
+    def analyze(self, request: AnalyzeRequest) -> StepPlannerResult:
+        if not self._is_settings_network_task(request.task_text):
+            return self._fallback_planner.analyze(request)
+
+        observation = request.observation
+        normalized_task_key = request.task_text.strip().casefold()
+        network_candidate = self._find_network_candidate(observation.foreground_window_candidate_elements)
+        session_state = self._read_session_state(observation.session_id)
+        on_settings_window = SettingsBluetoothScenarioPlanner._looks_like_settings_window(
+            observation.foreground_window_title,
+            observation.foreground_window_uia_name,
+            observation.foreground_window_uia_automation_id,
+            observation.foreground_window_uia_class_name,
+            observation.foreground_window_actionable_summary,
+        )
+        on_network_page = self._looks_like_network_page(
+            observation.foreground_window_title,
+            observation.foreground_window_actionable_summary,
+            observation.foreground_window_candidate_elements,
+        )
+
+        if (
+            session_state is not None
+            and session_state.last_feedback_type == "incorrect"
+            and session_state.current_action_type in {"open_network_settings", "recover_network_navigation"}
+            and on_settings_window
+            and not on_network_page
+        ):
+            response = NextStepResponse(
+                session_id=MockStepPlanner._build_session_id(normalized_task_key),
+                step_id="scenario-recover-network-navigation",
+                instruction=(
+                    "上一步进入“网络和 Internet”没有成功。"
+                    "请先确认仍在设置窗口的导航区域，"
+                    + (
+                        f"然后重新点击这个入口：{MockStepPlanner._format_candidate_label(network_candidate)}。"
+                        if network_candidate is not None
+                        else "然后重新查找“网络和 Internet / Wi-Fi”入口后再继续。"
+                    )
+                ),
+                action_type="recover_network_navigation",
+                requires_user_action=True,
+                highlight=HighlightDto(
+                    rect=MockStepPlanner._build_highlight_rect(network_candidate)
+                ),
+            )
+            return StepPlannerResult(
+                response=response,
+                planner_source="scenario",
+                prompt_version="scenario-settings-network.v2",
+                response_schema_version="next-step-response.v1",
+                target_candidate_ui_path=network_candidate.ui_path if network_candidate is not None else None,
+                target_candidate_label=MockStepPlanner._format_candidate_label(network_candidate) if network_candidate is not None else None,
+            )
+
+        if not on_settings_window:
+            response = NextStepResponse(
+                session_id=MockStepPlanner._build_session_id(normalized_task_key),
+                step_id="scenario-open-settings-for-network",
+                instruction="这是“打开设置并进入网络和 Internet”的场景。请先打开 Windows 设置窗口，再继续下一步分析。",
+                action_type="open_settings_app",
+                requires_user_action=True,
+                highlight=HighlightDto(
+                    rect=MockStepPlanner._build_highlight_rect(None)
+                ),
+            )
+            return StepPlannerResult(
+                response=response,
+                planner_source="scenario",
+                prompt_version="scenario-settings-network.v2",
+                response_schema_version="next-step-response.v1",
+            )
+
+        if on_network_page:
+            response = NextStepResponse(
+                session_id=MockStepPlanner._build_session_id(normalized_task_key),
+                step_id="scenario-confirm-network-page",
+                instruction="你已经进入“网络和 Internet”相关页面。请确认目标网络入口或开关后继续下一步操作。",
+                action_type="confirm_network_page",
+                requires_user_action=True,
+                highlight=HighlightDto(
+                    rect=MockStepPlanner._build_highlight_rect(network_candidate)
+                ),
+            )
+            return StepPlannerResult(
+                response=response,
+                planner_source="scenario",
+                prompt_version="scenario-settings-network.v2",
+                response_schema_version="next-step-response.v1",
+                target_candidate_ui_path=network_candidate.ui_path if network_candidate is not None else None,
+                target_candidate_label=MockStepPlanner._format_candidate_label(network_candidate) if network_candidate is not None else None,
+            )
+
+        if network_candidate is not None:
+            response = NextStepResponse(
+                session_id=MockStepPlanner._build_session_id(normalized_task_key),
+                step_id="scenario-open-network-settings",
+                instruction=(
+                    "这是“打开设置并进入网络和 Internet”的场景。"
+                    f"请先点击这个入口：{MockStepPlanner._format_candidate_label(network_candidate)}。"
+                ),
+                action_type="open_network_settings",
+                requires_user_action=True,
+                highlight=HighlightDto(
+                    rect=MockStepPlanner._build_highlight_rect(network_candidate)
+                ),
+            )
+            return StepPlannerResult(
+                response=response,
+                planner_source="scenario",
+                prompt_version="scenario-settings-network.v2",
+                response_schema_version="next-step-response.v1",
+                target_candidate_ui_path=network_candidate.ui_path,
+                target_candidate_label=MockStepPlanner._format_candidate_label(network_candidate),
+            )
+
+        response = NextStepResponse(
+            session_id=MockStepPlanner._build_session_id(normalized_task_key),
+            step_id="scenario-search-network-entry",
+            instruction="设置窗口已经打开，但当前还没有识别到“网络和 Internet / Wi‑Fi”入口。请先在设置窗口中查找相关入口后再继续分析。",
+            action_type="search_network_entry",
+            requires_user_action=True,
+            highlight=HighlightDto(
+                rect=MockStepPlanner._build_highlight_rect(None)
+            ),
+        )
+        return StepPlannerResult(
+            response=response,
+            planner_source="scenario",
+            prompt_version="scenario-settings-network.v2",
+            response_schema_version="next-step-response.v1",
+        )
+
+    def _read_session_state(self, session_id: Optional[str]) -> Optional[SessionStateEntry]:
+        if session_id is None or self._session_state_reader is None:
+            return None
+
+        try:
+            return self._session_state_reader(session_id)
+        except Exception:
+            return None
+
+    @staticmethod
+    def _is_settings_network_task(task_text: str) -> bool:
+        normalized = task_text.casefold().replace(" ", "")
+        contains_settings = "设置" in normalized or "settings" in normalized
+        contains_network = any(
+            keyword in normalized
+            for keyword in ("网络", "internet", "wifi", "wi-fi", "wi‑fi", "无线")
+        )
+        return contains_settings and contains_network
+
+    @staticmethod
+    def _looks_like_network_page(
+        window_title: str,
+        actionable_summary: str,
+        candidates: list[ObservationCandidateElementDto],
+    ) -> bool:
+        combined_text = f"{window_title} {actionable_summary}".casefold()
+        if "title=网络和internet" in combined_text or "title=network and internet" in combined_text:
+            return True
+
+        network_page_signals = (
+            "wi-fi",
+            "wifi",
+            "wlan",
+            "vpn",
+            "以太网",
+            "ethernet",
+            "代理",
+            "proxy",
+        )
+        for candidate in candidates:
+            candidate_text = " ".join(
+                value
+                for value in (candidate.name, candidate.automation_id, candidate.class_name)
+                if value
+            ).casefold()
+            if any(signal in candidate_text for signal in network_page_signals):
+                return True
+
+        return False
+
+    @staticmethod
+    def _find_network_candidate(
+        candidates: list[ObservationCandidateElementDto],
+    ) -> Optional[ObservationCandidateElementDto]:
+        for candidate in candidates:
+            candidate_text = " ".join(
+                value
+                for value in (candidate.name, candidate.automation_id, candidate.class_name)
+                if value
+            ).casefold()
+            compact_text = candidate_text.replace(" ", "")
+            if any(
+                keyword in compact_text
+                for keyword in (
+                    "网络和internet",
+                    "networkandinternet",
+                    "network&internet",
+                    "wi-fi",
+                    "wifi",
+                    "wlan",
+                    "ethernet",
+                )
+            ):
+                if candidate.bounding_rect.width > 0 and candidate.bounding_rect.height > 0:
+                    return candidate
+        return None
+
+
+class SettingsDisplayScenarioPlanner(StepPlanner):
+    def __init__(
+        self,
+        fallback_planner: StepPlanner,
+        session_state_reader: Optional[Callable[[str], Optional[SessionStateEntry]]] = None,
+    ) -> None:
+        self._fallback_planner = fallback_planner
+        self._session_state_reader = session_state_reader
+
+    def analyze(self, request: AnalyzeRequest) -> StepPlannerResult:
+        if not self._is_settings_display_task(request.task_text):
+            return self._fallback_planner.analyze(request)
+
+        observation = request.observation
+        normalized_task_key = request.task_text.strip().casefold()
+        display_candidate = self._find_display_candidate(observation.foreground_window_candidate_elements)
+        session_state = self._read_session_state(observation.session_id)
+        on_settings_window = SettingsBluetoothScenarioPlanner._looks_like_settings_window(
+            observation.foreground_window_title,
+            observation.foreground_window_uia_name,
+            observation.foreground_window_uia_automation_id,
+            observation.foreground_window_uia_class_name,
+            observation.foreground_window_actionable_summary,
+        )
+        on_display_page = self._looks_like_display_page(
+            observation.foreground_window_title,
+            observation.foreground_window_actionable_summary,
+            observation.foreground_window_candidate_elements,
+        )
+
+        if (
+            session_state is not None
+            and session_state.last_feedback_type == "incorrect"
+            and session_state.current_action_type in {"open_display_settings", "recover_display_navigation"}
+            and on_settings_window
+            and not on_display_page
+        ):
+            response = NextStepResponse(
+                session_id=MockStepPlanner._build_session_id(normalized_task_key),
+                step_id="scenario-recover-display-navigation",
+                instruction=(
+                    "上一步进入“显示”页面没有成功。"
+                    "请先确认仍在设置窗口导航区域，"
+                    + (
+                        f"然后重新点击这个入口：{MockStepPlanner._format_candidate_label(display_candidate)}。"
+                        if display_candidate is not None
+                        else "然后重新查找“系统 -> 显示”入口后再继续。"
+                    )
+                ),
+                action_type="recover_display_navigation",
+                requires_user_action=True,
+                highlight=HighlightDto(
+                    rect=MockStepPlanner._build_highlight_rect(display_candidate)
+                ),
+            )
+            return StepPlannerResult(
+                response=response,
+                planner_source="scenario",
+                prompt_version="scenario-settings-display.v1",
+                response_schema_version="next-step-response.v1",
+                target_candidate_ui_path=display_candidate.ui_path if display_candidate is not None else None,
+                target_candidate_label=MockStepPlanner._format_candidate_label(display_candidate) if display_candidate is not None else None,
+            )
+
+        if not on_settings_window:
+            response = NextStepResponse(
+                session_id=MockStepPlanner._build_session_id(normalized_task_key),
+                step_id="scenario-open-settings-for-display",
+                instruction="这是“打开设置并进入显示页面”的场景。请先打开 Windows 设置窗口，再继续下一步分析。",
+                action_type="open_settings_app",
+                requires_user_action=True,
+                highlight=HighlightDto(
+                    rect=MockStepPlanner._build_highlight_rect(None)
+                ),
+            )
+            return StepPlannerResult(
+                response=response,
+                planner_source="scenario",
+                prompt_version="scenario-settings-display.v1",
+                response_schema_version="next-step-response.v1",
+            )
+
+        if on_display_page:
+            response = NextStepResponse(
+                session_id=MockStepPlanner._build_session_id(normalized_task_key),
+                step_id="scenario-confirm-display-page",
+                instruction="你已经进入“显示”相关页面。请确认目标设置（如缩放、分辨率或亮度）后继续下一步操作。",
+                action_type="confirm_display_page",
+                requires_user_action=True,
+                highlight=HighlightDto(
+                    rect=MockStepPlanner._build_highlight_rect(display_candidate)
+                ),
+            )
+            return StepPlannerResult(
+                response=response,
+                planner_source="scenario",
+                prompt_version="scenario-settings-display.v1",
+                response_schema_version="next-step-response.v1",
+                target_candidate_ui_path=display_candidate.ui_path if display_candidate is not None else None,
+                target_candidate_label=MockStepPlanner._format_candidate_label(display_candidate) if display_candidate is not None else None,
+            )
+
+        if display_candidate is not None:
+            response = NextStepResponse(
+                session_id=MockStepPlanner._build_session_id(normalized_task_key),
+                step_id="scenario-open-display-settings",
+                instruction=(
+                    "这是“打开设置并进入显示页面”的场景。"
+                    f"请先点击这个入口：{MockStepPlanner._format_candidate_label(display_candidate)}。"
+                ),
+                action_type="open_display_settings",
+                requires_user_action=True,
+                highlight=HighlightDto(
+                    rect=MockStepPlanner._build_highlight_rect(display_candidate)
+                ),
+            )
+            return StepPlannerResult(
+                response=response,
+                planner_source="scenario",
+                prompt_version="scenario-settings-display.v1",
+                response_schema_version="next-step-response.v1",
+                target_candidate_ui_path=display_candidate.ui_path,
+                target_candidate_label=MockStepPlanner._format_candidate_label(display_candidate),
+            )
+
+        response = NextStepResponse(
+            session_id=MockStepPlanner._build_session_id(normalized_task_key),
+            step_id="scenario-search-display-entry",
+            instruction="设置窗口已经打开，但当前还没有识别到“系统 -> 显示”入口。请先在设置窗口中定位显示入口后再继续分析。",
+            action_type="search_display_entry",
+            requires_user_action=True,
+            highlight=HighlightDto(
+                rect=MockStepPlanner._build_highlight_rect(None)
+            ),
+        )
+        return StepPlannerResult(
+            response=response,
+            planner_source="scenario",
+            prompt_version="scenario-settings-display.v1",
+            response_schema_version="next-step-response.v1",
+        )
+
+    def _read_session_state(self, session_id: Optional[str]) -> Optional[SessionStateEntry]:
+        if session_id is None or self._session_state_reader is None:
+            return None
+
+        try:
+            return self._session_state_reader(session_id)
+        except Exception:
+            return None
+
+    @staticmethod
+    def _is_settings_display_task(task_text: str) -> bool:
+        normalized = task_text.casefold().replace(" ", "")
+        contains_settings = "设置" in normalized or "settings" in normalized
+        contains_display = any(
+            keyword in normalized
+            for keyword in ("显示", "display", "分辨率", "缩放", "亮度", "screen")
+        )
+        return contains_settings and contains_display
+
+    @staticmethod
+    def _looks_like_display_page(
+        window_title: str,
+        actionable_summary: str,
+        candidates: list[ObservationCandidateElementDto],
+    ) -> bool:
+        combined_text = f"{window_title} {actionable_summary}".casefold()
+        if "title=显示" in combined_text or "title=display" in combined_text:
+            return True
+
+        page_signals = (
+            "显示分辨率",
+            "display resolution",
+            "缩放",
+            "scale",
+            "亮度",
+            "brightness",
+            "夜间模式",
+            "night light",
+        )
+        for candidate in candidates:
+            candidate_text = " ".join(
+                value
+                for value in (candidate.name, candidate.automation_id, candidate.class_name)
+                if value
+            ).casefold()
+            if any(signal in candidate_text for signal in page_signals):
+                return True
+
+        return False
+
+    @staticmethod
+    def _find_display_candidate(
+        candidates: list[ObservationCandidateElementDto],
+    ) -> Optional[ObservationCandidateElementDto]:
+        for candidate in candidates:
+            candidate_text = " ".join(
+                value
+                for value in (candidate.name, candidate.automation_id, candidate.class_name)
+                if value
+            ).casefold()
+            compact_text = candidate_text.replace(" ", "")
+            if any(
+                keyword in compact_text
+                for keyword in (
+                    "显示",
+                    "display",
+                    "systemsettings_display",
+                    "分辨率",
+                    "缩放",
+                )
+            ):
+                if candidate.bounding_rect.width > 0 and candidate.bounding_rect.height > 0:
+                    return candidate
+        return None
+
+
+class SettingsPersonalizationScenarioPlanner(StepPlanner):
+    def __init__(
+        self,
+        fallback_planner: StepPlanner,
+        session_state_reader: Optional[Callable[[str], Optional[SessionStateEntry]]] = None,
+    ) -> None:
+        self._fallback_planner = fallback_planner
+        self._session_state_reader = session_state_reader
+
+    def analyze(self, request: AnalyzeRequest) -> StepPlannerResult:
+        if not self._is_settings_personalization_task(request.task_text):
+            return self._fallback_planner.analyze(request)
+
+        observation = request.observation
+        normalized_task_key = request.task_text.strip().casefold()
+        personalization_candidate = self._find_personalization_candidate(observation.foreground_window_candidate_elements)
+        session_state = self._read_session_state(observation.session_id)
+        on_settings_window = SettingsBluetoothScenarioPlanner._looks_like_settings_window(
+            observation.foreground_window_title,
+            observation.foreground_window_uia_name,
+            observation.foreground_window_uia_automation_id,
+            observation.foreground_window_uia_class_name,
+            observation.foreground_window_actionable_summary,
+        )
+        on_personalization_page = self._looks_like_personalization_page(
+            observation.foreground_window_title,
+            observation.foreground_window_actionable_summary,
+            observation.foreground_window_candidate_elements,
+        )
+
+        if (
+            session_state is not None
+            and session_state.last_feedback_type == "incorrect"
+            and session_state.current_action_type in {"open_personalization_settings", "recover_personalization_navigation"}
+            and on_settings_window
+            and not on_personalization_page
+        ):
+            response = NextStepResponse(
+                session_id=MockStepPlanner._build_session_id(normalized_task_key),
+                step_id="scenario-recover-personalization-navigation",
+                instruction=(
+                    "上一步进入“个性化”页面没有成功。"
+                    "请先确认仍在设置窗口导航区域，"
+                    + (
+                        f"然后重新点击这个入口：{MockStepPlanner._format_candidate_label(personalization_candidate)}。"
+                        if personalization_candidate is not None
+                        else "然后重新查找“个性化”入口后再继续。"
+                    )
+                ),
+                action_type="recover_personalization_navigation",
+                requires_user_action=True,
+                highlight=HighlightDto(
+                    rect=MockStepPlanner._build_highlight_rect(personalization_candidate)
+                ),
+            )
+            return StepPlannerResult(
+                response=response,
+                planner_source="scenario",
+                prompt_version="scenario-settings-personalization.v1",
+                response_schema_version="next-step-response.v1",
+                target_candidate_ui_path=personalization_candidate.ui_path if personalization_candidate is not None else None,
+                target_candidate_label=MockStepPlanner._format_candidate_label(personalization_candidate) if personalization_candidate is not None else None,
+            )
+
+        if not on_settings_window:
+            response = NextStepResponse(
+                session_id=MockStepPlanner._build_session_id(normalized_task_key),
+                step_id="scenario-open-settings-for-personalization",
+                instruction="这是“打开设置并进入个性化页面”的场景。请先打开 Windows 设置窗口，再继续下一步分析。",
+                action_type="open_settings_app",
+                requires_user_action=True,
+                highlight=HighlightDto(
+                    rect=MockStepPlanner._build_highlight_rect(None)
+                ),
+            )
+            return StepPlannerResult(
+                response=response,
+                planner_source="scenario",
+                prompt_version="scenario-settings-personalization.v1",
+                response_schema_version="next-step-response.v1",
+            )
+
+        if on_personalization_page:
+            response = NextStepResponse(
+                session_id=MockStepPlanner._build_session_id(normalized_task_key),
+                step_id="scenario-confirm-personalization-page",
+                instruction="你已经进入“个性化”相关页面。请确认目标设置（主题、背景、锁屏等）后继续下一步操作。",
+                action_type="confirm_personalization_page",
+                requires_user_action=True,
+                highlight=HighlightDto(
+                    rect=MockStepPlanner._build_highlight_rect(personalization_candidate)
+                ),
+            )
+            return StepPlannerResult(
+                response=response,
+                planner_source="scenario",
+                prompt_version="scenario-settings-personalization.v1",
+                response_schema_version="next-step-response.v1",
+                target_candidate_ui_path=personalization_candidate.ui_path if personalization_candidate is not None else None,
+                target_candidate_label=MockStepPlanner._format_candidate_label(personalization_candidate) if personalization_candidate is not None else None,
+            )
+
+        if personalization_candidate is not None:
+            response = NextStepResponse(
+                session_id=MockStepPlanner._build_session_id(normalized_task_key),
+                step_id="scenario-open-personalization-settings",
+                instruction=(
+                    "这是“打开设置并进入个性化页面”的场景。"
+                    f"请先点击这个入口：{MockStepPlanner._format_candidate_label(personalization_candidate)}。"
+                ),
+                action_type="open_personalization_settings",
+                requires_user_action=True,
+                highlight=HighlightDto(
+                    rect=MockStepPlanner._build_highlight_rect(personalization_candidate)
+                ),
+            )
+            return StepPlannerResult(
+                response=response,
+                planner_source="scenario",
+                prompt_version="scenario-settings-personalization.v1",
+                response_schema_version="next-step-response.v1",
+                target_candidate_ui_path=personalization_candidate.ui_path,
+                target_candidate_label=MockStepPlanner._format_candidate_label(personalization_candidate),
+            )
+
+        response = NextStepResponse(
+            session_id=MockStepPlanner._build_session_id(normalized_task_key),
+            step_id="scenario-search-personalization-entry",
+            instruction="设置窗口已经打开，但当前还没有识别到“个性化”入口。请先在设置窗口中定位该入口后再继续分析。",
+            action_type="search_personalization_entry",
+            requires_user_action=True,
+            highlight=HighlightDto(
+                rect=MockStepPlanner._build_highlight_rect(None)
+            ),
+        )
+        return StepPlannerResult(
+            response=response,
+            planner_source="scenario",
+            prompt_version="scenario-settings-personalization.v1",
+            response_schema_version="next-step-response.v1",
+        )
+
+    def _read_session_state(self, session_id: Optional[str]) -> Optional[SessionStateEntry]:
+        if session_id is None or self._session_state_reader is None:
+            return None
+
+        try:
+            return self._session_state_reader(session_id)
+        except Exception:
+            return None
+
+    @staticmethod
+    def _is_settings_personalization_task(task_text: str) -> bool:
+        normalized = task_text.casefold().replace(" ", "")
+        contains_settings = "设置" in normalized or "settings" in normalized
+        contains_personalization = any(
+            keyword in normalized
+            for keyword in ("个性化", "personalization", "主题", "背景", "锁屏", "wallpaper")
+        )
+        return contains_settings and contains_personalization
+
+    @staticmethod
+    def _looks_like_personalization_page(
+        window_title: str,
+        actionable_summary: str,
+        candidates: list[ObservationCandidateElementDto],
+    ) -> bool:
+        combined_text = f"{window_title} {actionable_summary}".casefold()
+        if "title=个性化" in combined_text or "title=personalization" in combined_text:
+            return True
+
+        page_signals = (
+            "主题",
+            "themes",
+            "背景",
+            "background",
+            "锁屏",
+            "lock screen",
+            "颜色",
+            "colors",
+        )
+        for candidate in candidates:
+            candidate_text = " ".join(
+                value
+                for value in (candidate.name, candidate.automation_id, candidate.class_name)
+                if value
+            ).casefold()
+            if any(signal in candidate_text for signal in page_signals):
+                return True
+
+        return False
+
+    @staticmethod
+    def _find_personalization_candidate(
+        candidates: list[ObservationCandidateElementDto],
+    ) -> Optional[ObservationCandidateElementDto]:
+        for candidate in candidates:
+            candidate_text = " ".join(
+                value
+                for value in (candidate.name, candidate.automation_id, candidate.class_name)
+                if value
+            ).casefold()
+            compact_text = candidate_text.replace(" ", "")
+            if any(
+                keyword in compact_text
+                for keyword in (
+                    "个性化",
+                    "personalization",
+                    "systemsettings_personalization",
+                    "主题",
+                    "背景",
+                )
+            ):
+                if candidate.bounding_rect.width > 0 and candidate.bounding_rect.height > 0:
+                    return candidate
+        return None
+
+
 class ModelStepPlanner(StepPlanner):
+    _ACTION_TYPE_PATTERN = re.compile(r"^[a-z][a-z0-9_]{1,63}$")
+    _DISALLOWED_ACTION_TYPE_TERMS = (
+        "auto_click",
+        "auto_type",
+        "auto_press",
+        "keyboard_control",
+        "mouse_control",
+        "execute_script",
+        "remote_control",
+    )
+
     def __init__(
         self,
         runtime_model_config: RuntimeModelConfig,
@@ -379,7 +1269,12 @@ class ModelStepPlanner(StepPlanner):
                 prompt_bundle=prompt_bundle,
             )
             response = NextStepResponse.model_validate(payload)
-            target_candidate = self._match_highlight_candidate(request, response)
+            if not response.instruction.strip():
+                raise ValueError("instruction must not be empty")
+            if not self._is_safe_action_type(response.action_type):
+                raise ValueError(f"unsupported action_type from model: {response.action_type}")
+
+            response, target_candidate = self._enforce_safe_response(request, response)
             return StepPlannerResult(
                 response=response,
                 planner_source="model",
@@ -405,6 +1300,75 @@ class ModelStepPlanner(StepPlanner):
                 planner_error=str(exc),
                 raw_model_response_excerpt=exc.raw_response_excerpt if isinstance(exc, ModelGatewayError) else None,
             )
+
+    @staticmethod
+    def _enforce_safe_response(
+        request: AnalyzeRequest,
+        response: NextStepResponse,
+    ) -> tuple[NextStepResponse, Optional[ObservationCandidateElementDto]]:
+        safe_response = response
+        if not safe_response.requires_user_action:
+            safe_response = safe_response.model_copy(
+                update={"requires_user_action": True}
+            )
+
+        target_candidate = ModelStepPlanner._match_highlight_candidate(request, safe_response)
+        if target_candidate is not None:
+            return safe_response, target_candidate
+
+        preferred_candidate = MockStepPlanner._find_preferred_candidate(
+            request.task_text.strip(),
+            request.observation.foreground_window_candidate_elements,
+        )
+        if preferred_candidate is not None:
+            safe_response = safe_response.model_copy(
+                update={
+                    "highlight": HighlightDto(
+                        rect=RectDto(
+                            x=preferred_candidate.bounding_rect.x,
+                            y=preferred_candidate.bounding_rect.y,
+                            width=preferred_candidate.bounding_rect.width,
+                            height=preferred_candidate.bounding_rect.height,
+                        )
+                    )
+                }
+            )
+            return safe_response, preferred_candidate
+
+        safe_rect = ModelStepPlanner._build_safe_default_rect(
+            screen_width=request.observation.screen_width,
+            screen_height=request.observation.screen_height,
+        )
+        safe_response = safe_response.model_copy(
+            update={"highlight": HighlightDto(rect=safe_rect)}
+        )
+        return safe_response, None
+
+    @staticmethod
+    def _build_safe_default_rect(screen_width: int, screen_height: int) -> RectDto:
+        width = min(max(screen_width // 5, 180), 420) if screen_width > 0 else 280
+        height = min(max(screen_height // 8, 90), 220) if screen_height > 0 else 120
+
+        safe_x = max((screen_width - width) // 2, 0) if screen_width > 0 else 640
+        safe_y = max((screen_height - height) // 2, 0) if screen_height > 0 else 320
+
+        return RectDto(
+            x=safe_x,
+            y=safe_y,
+            width=width,
+            height=height,
+        )
+
+    @classmethod
+    def _is_safe_action_type(cls, action_type: str) -> bool:
+        normalized = action_type.strip().casefold()
+        if not normalized:
+            return False
+
+        if cls._ACTION_TYPE_PATTERN.match(normalized) is None:
+            return False
+
+        return all(term not in normalized for term in cls._DISALLOWED_ACTION_TYPE_TERMS)
 
     @staticmethod
     def _match_highlight_candidate(

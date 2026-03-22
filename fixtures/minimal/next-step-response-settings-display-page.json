@@ -1,0 +1,15 @@
+{
+  "session_id": "mock-session-7f1eda36",
+  "step_id": "scenario-confirm-display-page",
+  "instruction": "你已经进入“显示”相关页面。请确认目标设置（如缩放、分辨率或亮度）后继续下一步操作。",
+  "action_type": "confirm_display_page",
+  "requires_user_action": true,
+  "highlight": {
+    "rect": {
+      "x": 514,
+      "y": 318,
+      "width": 240,
+      "height": 34
+    }
+  }
+}

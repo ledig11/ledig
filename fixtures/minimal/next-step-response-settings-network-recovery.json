@@ -1,0 +1,15 @@
+{
+  "session_id": "mock-session-2ad320be",
+  "step_id": "scenario-recover-network-navigation",
+  "instruction": "上一步进入“网络和 Internet”没有成功。请先确认仍在设置窗口的导航区域，然后重新点击这个入口：ControlType.Button:网络和 Internet (automation_id=SystemSettings_Network, path=foreground-window/child[2])。",
+  "action_type": "recover_network_navigation",
+  "requires_user_action": true,
+  "highlight": {
+    "rect": {
+      "x": 44,
+      "y": 264,
+      "width": 190,
+      "height": 36
+    }
+  }
+}

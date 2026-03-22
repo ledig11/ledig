@@ -6,7 +6,7 @@
 - Transparent overlay
 - Screenshot capture
 - UI Automation reader
-- HTTP/WebSocket communication
+- HTTP request/response + WebSocket realtime event stream
 
 ## Backend
 - FastAPI
@@ -15,6 +15,7 @@
 - Prompt builder
 - Recovery planner
 - Model gateway
+- Realtime event hub (`/api/ws/events`)
 
 ## Shared
 - DTOs

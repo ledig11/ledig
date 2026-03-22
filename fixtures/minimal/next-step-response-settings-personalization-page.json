@@ -1,0 +1,15 @@
+{
+  "session_id": "mock-session-ad25b27f",
+  "step_id": "scenario-confirm-personalization-page",
+  "instruction": "你已经进入“个性化”相关页面。请确认目标设置（主题、背景、锁屏等）后继续下一步操作。",
+  "action_type": "confirm_personalization_page",
+  "requires_user_action": true,
+  "highlight": {
+    "rect": {
+      "x": 420,
+      "y": 300,
+      "width": 120,
+      "height": 34
+    }
+  }
+}

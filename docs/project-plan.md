@@ -24,3 +24,4 @@ Windows-first step-by-step computer operation guidance assistant MVP.
 - Real task scenario: software installation guidance
 - Error recovery flow
 - Better step planning
+- First concrete Windows Settings -> Bluetooth scenario heuristic

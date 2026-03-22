@@ -1,0 +1,15 @@
+{
+  "session_id": "mock-session-7f1eda36",
+  "step_id": "scenario-open-display-settings",
+  "instruction": "这是“打开设置并进入显示页面”的场景。请先点击这个入口：ControlType.Button:显示 (automation_id=SystemSettings_Display, path=foreground-window/child[0]/child[1])。",
+  "action_type": "open_display_settings",
+  "requires_user_action": true,
+  "highlight": {
+    "rect": {
+      "x": 74,
+      "y": 228,
+      "width": 110,
+      "height": 32
+    }
+  }
+}

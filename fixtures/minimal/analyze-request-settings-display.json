@@ -1,0 +1,55 @@
+{
+  "task_text": "打开设置并进入显示页面",
+  "observation": {
+    "session_id": null,
+    "captured_at_utc": "2026-03-22T01:00:00Z",
+    "foreground_window_title": "设置",
+    "foreground_window_uia_name": "设置",
+    "foreground_window_uia_automation_id": "SystemSettings",
+    "foreground_window_uia_class_name": "ApplicationFrameWindow",
+    "foreground_window_uia_control_type": "ControlType.Window",
+    "foreground_window_uia_is_enabled": true,
+    "foreground_window_uia_child_count": 5,
+    "foreground_window_uia_child_summary": "ControlType.Button:系统 | ControlType.Button:蓝牙和设备 | ControlType.Button:网络和 Internet | ControlType.Button:个性化 | ControlType.Button:应用",
+    "foreground_window_actionable_summary": "window_kind=settings; title=设置; control_type=ControlType.Window; child_count=5; candidate_count=5; scanned_nodes=124; scan_depth=4; child_summary=ControlType.Button:系统 | ControlType.Button:蓝牙和设备 | ControlType.Button:网络和 Internet | ControlType.Button:个性化 | ControlType.Button:应用",
+    "foreground_window_candidate_elements": [
+      {
+        "name": "系统",
+        "automation_id": "SystemSettings_System",
+        "class_name": "NavigationViewItem",
+        "control_type": "ControlType.Button",
+        "is_enabled": true,
+        "is_offscreen": false,
+        "is_keyboard_focusable": true,
+        "has_keyboard_focus": true,
+        "ui_path": "foreground-window/child[0]",
+        "bounding_rect": {
+          "x": 44,
+          "y": 184,
+          "width": 120,
+          "height": 36
+        }
+      },
+      {
+        "name": "显示",
+        "automation_id": "SystemSettings_Display",
+        "class_name": "NavigationViewItem",
+        "control_type": "ControlType.Button",
+        "is_enabled": true,
+        "is_offscreen": false,
+        "is_keyboard_focusable": true,
+        "has_keyboard_focus": false,
+        "ui_path": "foreground-window/child[0]/child[1]",
+        "bounding_rect": {
+          "x": 74,
+          "y": 228,
+          "width": 110,
+          "height": 32
+        }
+      }
+    ],
+    "screen_width": 1280,
+    "screen_height": 720,
+    "screenshot_ref": "local://observation/20260322/010000/71ae9a2b"
+  }
+}

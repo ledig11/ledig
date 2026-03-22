@@ -63,6 +63,15 @@
         "foreground_window_actionable_summary": {
           "type": "string"
         },
+        "foreground_window_candidate_count": {
+          "type": "integer"
+        },
+        "foreground_window_scan_node_count": {
+          "type": "integer"
+        },
+        "foreground_window_scan_depth": {
+          "type": "integer"
+        },
         "foreground_window_candidate_elements": {
           "type": "array",
           "items": {
@@ -138,6 +147,12 @@
         },
         "screenshot_ref": {
           "type": "string"
+        },
+        "screenshot_status": {
+          "type": ["string", "null"]
+        },
+        "screenshot_local_path": {
+          "type": ["string", "null"]
         }
       }
     }

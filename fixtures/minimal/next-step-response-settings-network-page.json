@@ -1,0 +1,15 @@
+{
+  "session_id": "mock-session-2ad320be",
+  "step_id": "scenario-confirm-network-page",
+  "instruction": "你已经进入“网络和 Internet”相关页面。请确认目标网络入口或开关后继续下一步操作。",
+  "action_type": "confirm_network_page",
+  "requires_user_action": true,
+  "highlight": {
+    "rect": {
+      "x": 420,
+      "y": 236,
+      "width": 120,
+      "height": 34
+    }
+  }
+}

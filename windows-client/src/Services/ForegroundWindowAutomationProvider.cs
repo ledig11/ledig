@@ -11,7 +11,9 @@ public interface IForegroundWindowAutomationProvider
 
 public sealed class ForegroundWindowAutomationProvider : IForegroundWindowAutomationProvider
 {
-    private const int MaxCandidateElements = 8;
+    private const int MaxCandidateElements = 24;
+    private const int MaxScanDepth = 6;
+    private const int MaxScannedNodes = 400;
 
     public ForegroundWindowAutomationSnapshot Capture()
     {
@@ -39,7 +41,9 @@ public sealed class ForegroundWindowAutomationProvider : IForegroundWindowAutoma
                 IsEnabled = current.IsEnabled,
                 ChildCount = GetChildCount(element),
                 ChildSummary = BuildChildSummary(element),
-                CandidateElements = BuildCandidateElements(element),
+                CandidateElements = BuildCandidateElements(element, out int scannedNodeCount, out int maxDepthReached),
+                ScannedNodeCount = scannedNodeCount,
+                MaxDepthReached = maxDepthReached,
             };
         }
         catch
@@ -98,39 +102,176 @@ public sealed class ForegroundWindowAutomationProvider : IForegroundWindowAutoma
         }
     }
 
-    private static List<ObservationCandidateElementDto> BuildCandidateElements(AutomationElement rootElement)
+    private static List<ObservationCandidateElementDto> BuildCandidateElements(
+        AutomationElement rootElement,
+        out int scannedNodeCount,
+        out int maxDepthReached)
     {
+        scannedNodeCount = 0;
+        maxDepthReached = 0;
+        List<CandidateScoredItem> scoredCandidates = [];
+
         try
         {
-            AutomationElementCollection children = rootElement.FindAll(TreeScope.Children, Condition.TrueCondition);
-            List<ObservationCandidateElementDto> candidates = [];
-            int maxChildren = Math.Min(children.Count, MaxCandidateElements);
+            Queue<TraversalItem> queue = new();
+            queue.Enqueue(new TraversalItem(rootElement, "foreground-window", 0));
 
-            for (int index = 0; index < maxChildren; index++)
+            while (queue.Count > 0 && scannedNodeCount < MaxScannedNodes)
             {
-                AutomationElement child = children[index];
-                AutomationElementInformation current = child.Current;
-                candidates.Add(new ObservationCandidateElementDto
+                TraversalItem currentItem = queue.Dequeue();
+                scannedNodeCount++;
+                maxDepthReached = Math.Max(maxDepthReached, currentItem.Depth);
+
+                if (currentItem.Depth >= MaxScanDepth)
                 {
-                    Name = Normalize(current.Name, "unnamed-child"),
-                    AutomationId = Normalize(current.AutomationId, "unknown-automation-id"),
-                    ClassName = Normalize(current.ClassName, "unknown-class-name"),
-                    ControlType = current.ControlType?.ProgrammaticName ?? "unknown-control-type",
-                    IsEnabled = current.IsEnabled,
-                    IsOffscreen = current.IsOffscreen,
-                    IsKeyboardFocusable = current.IsKeyboardFocusable,
-                    HasKeyboardFocus = current.HasKeyboardFocus,
-                    UiPath = $"foreground-window/child[{index}]",
-                    BoundingRect = CreateRect(current.BoundingRectangle),
-                });
+                    continue;
+                }
+
+                AutomationElementCollection children;
+                try
+                {
+                    children = currentItem.Element.FindAll(TreeScope.Children, Condition.TrueCondition);
+                }
+                catch
+                {
+                    continue;
+                }
+
+                int childCount = children.Count;
+                for (int index = 0; index < childCount; index++)
+                {
+                    AutomationElement child = children[index];
+                    string childPath = $"{currentItem.UiPath}/child[{index}]";
+                    int childDepth = currentItem.Depth + 1;
+                    queue.Enqueue(new TraversalItem(child, childPath, childDepth));
+
+                    if (!TryCreateCandidate(child, childPath, out ObservationCandidateElementDto? candidate, out int score))
+                    {
+                        continue;
+                    }
+
+                    scoredCandidates.Add(new CandidateScoredItem(candidate, score, childDepth));
+                }
             }
 
-            return candidates;
+            return scoredCandidates
+                .OrderByDescending(item => item.Score)
+                .ThenBy(item => item.Depth)
+                .Take(MaxCandidateElements)
+                .Select(item => item.Candidate)
+                .ToList();
         }
         catch
         {
+            scannedNodeCount = 0;
+            maxDepthReached = 0;
             return [];
         }
+    }
+
+    private static bool TryCreateCandidate(
+        AutomationElement element,
+        string uiPath,
+        out ObservationCandidateElementDto? candidate,
+        out int score)
+    {
+        candidate = null;
+        score = 0;
+
+        AutomationElementInformation current;
+        try
+        {
+            current = element.Current;
+        }
+        catch
+        {
+            return false;
+        }
+
+        RectResponse rect = CreateRect(current.BoundingRectangle);
+        if (rect.Width <= 0 || rect.Height <= 0)
+        {
+            return false;
+        }
+
+        string name = Normalize(current.Name, "unnamed-child");
+        string automationId = Normalize(current.AutomationId, "unknown-automation-id");
+        string className = Normalize(current.ClassName, "unknown-class-name");
+        string controlType = current.ControlType?.ProgrammaticName ?? "unknown-control-type";
+        bool isEnabled = current.IsEnabled;
+        bool isOffscreen = current.IsOffscreen;
+        bool isKeyboardFocusable = current.IsKeyboardFocusable;
+        bool hasKeyboardFocus = current.HasKeyboardFocus;
+
+        int scoreFromControlType = GetControlTypeScore(controlType);
+        bool hasIdentity = !string.Equals(name, "unnamed-child", StringComparison.Ordinal)
+            || !string.Equals(automationId, "unknown-automation-id", StringComparison.Ordinal);
+        int scoreFromIdentity = hasIdentity ? 3 : 0;
+        int scoreFromState = (isEnabled ? 4 : 0)
+            + (!isOffscreen ? 3 : 0)
+            + (isKeyboardFocusable ? 2 : 0)
+            + (hasKeyboardFocus ? 1 : 0);
+
+        score = scoreFromControlType + scoreFromIdentity + scoreFromState;
+        if (score < 6)
+        {
+            return false;
+        }
+
+        candidate = new ObservationCandidateElementDto
+        {
+            Name = name,
+            AutomationId = automationId,
+            ClassName = className,
+            ControlType = controlType,
+            IsEnabled = isEnabled,
+            IsOffscreen = isOffscreen,
+            IsKeyboardFocusable = isKeyboardFocusable,
+            HasKeyboardFocus = hasKeyboardFocus,
+            UiPath = uiPath,
+            BoundingRect = rect,
+        };
+        return true;
+    }
+
+    private static int GetControlTypeScore(string controlType)
+    {
+        string normalized = controlType.Trim().ToLowerInvariant();
+        if (normalized.Contains("button", StringComparison.Ordinal))
+        {
+            return 10;
+        }
+
+        if (normalized.Contains("hyperlink", StringComparison.Ordinal)
+            || normalized.Contains("tabitem", StringComparison.Ordinal)
+            || normalized.Contains("menuitem", StringComparison.Ordinal)
+            || normalized.Contains("listitem", StringComparison.Ordinal)
+            || normalized.Contains("treeitem", StringComparison.Ordinal))
+        {
+            return 8;
+        }
+
+        if (normalized.Contains("checkbox", StringComparison.Ordinal)
+            || normalized.Contains("radiobutton", StringComparison.Ordinal)
+            || normalized.Contains("togglebutton", StringComparison.Ordinal))
+        {
+            return 8;
+        }
+
+        if (normalized.Contains("edit", StringComparison.Ordinal)
+            || normalized.Contains("combo", StringComparison.Ordinal)
+            || normalized.Contains("document", StringComparison.Ordinal))
+        {
+            return 6;
+        }
+
+        if (normalized.Contains("pane", StringComparison.Ordinal)
+            || normalized.Contains("text", StringComparison.Ordinal))
+        {
+            return 3;
+        }
+
+        return 1;
     }
 
     private static RectResponse CreateRect(System.Windows.Rect boundingRectangle)
@@ -146,6 +287,9 @@ public sealed class ForegroundWindowAutomationProvider : IForegroundWindowAutoma
 
     [DllImport("user32.dll")]
     private static extern nint GetForegroundWindow();
+
+    private readonly record struct TraversalItem(AutomationElement Element, string UiPath, int Depth);
+    private readonly record struct CandidateScoredItem(ObservationCandidateElementDto Candidate, int Score, int Depth);
 }
 
 public sealed class ForegroundWindowAutomationSnapshot
@@ -158,6 +302,8 @@ public sealed class ForegroundWindowAutomationSnapshot
     public int ChildCount { get; init; }
     public string ChildSummary { get; init; } = string.Empty;
     public List<ObservationCandidateElementDto> CandidateElements { get; init; } = [];
+    public int ScannedNodeCount { get; init; }
+    public int MaxDepthReached { get; init; }
 
     public static ForegroundWindowAutomationSnapshot Fallback()
     {
@@ -171,6 +317,8 @@ public sealed class ForegroundWindowAutomationSnapshot
             ChildCount = 0,
             ChildSummary = "unknown-children",
             CandidateElements = [],
+            ScannedNodeCount = 0,
+            MaxDepthReached = 0,
         };
     }
 }

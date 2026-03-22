@@ -1,0 +1,15 @@
+{
+  "session_id": "mock-session-ad25b27f",
+  "step_id": "scenario-recover-personalization-navigation",
+  "instruction": "上一步进入“个性化”页面没有成功。请先确认仍在设置窗口导航区域，然后重新点击这个入口：ControlType.Button:个性化 (automation_id=SystemSettings_Personalization, path=foreground-window/child[3])。",
+  "action_type": "recover_personalization_navigation",
+  "requires_user_action": true,
+  "highlight": {
+    "rect": {
+      "x": 44,
+      "y": 304,
+      "width": 132,
+      "height": 36
+    }
+  }
+}

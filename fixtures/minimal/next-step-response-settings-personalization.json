@@ -1,0 +1,15 @@
+{
+  "session_id": "mock-session-ad25b27f",
+  "step_id": "scenario-open-personalization-settings",
+  "instruction": "这是“打开设置并进入个性化页面”的场景。请先点击这个入口：ControlType.Button:个性化 (automation_id=SystemSettings_Personalization, path=foreground-window/child[3])。",
+  "action_type": "open_personalization_settings",
+  "requires_user_action": true,
+  "highlight": {
+    "rect": {
+      "x": 44,
+      "y": 304,
+      "width": 132,
+      "height": 36
+    }
+  }
+}

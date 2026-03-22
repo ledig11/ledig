@@ -56,6 +56,9 @@ public sealed class AnalyzeApiClient : IAnalyzeApiClient
                         foreground_window_uia_child_count = request.Observation.ForegroundWindowUiaChildCount,
                         foreground_window_uia_child_summary = request.Observation.ForegroundWindowUiaChildSummary,
                         foreground_window_actionable_summary = request.Observation.ForegroundWindowActionableSummary,
+                        foreground_window_candidate_count = request.Observation.ForegroundWindowCandidateCount,
+                        foreground_window_scan_node_count = request.Observation.ForegroundWindowScanNodeCount,
+                        foreground_window_scan_depth = request.Observation.ForegroundWindowScanDepth,
                         foreground_window_candidate_elements = request.Observation.ForegroundWindowCandidateElements.Select(
                             candidate => new
                             {
@@ -79,6 +82,8 @@ public sealed class AnalyzeApiClient : IAnalyzeApiClient
                         screen_width = request.Observation.ScreenWidth,
                         screen_height = request.Observation.ScreenHeight,
                         screenshot_ref = request.Observation.ScreenshotRef,
+                        screenshot_status = request.Observation.ScreenshotStatus,
+                        screenshot_local_path = request.Observation.ScreenshotLocalPath,
                     },
                 },
                 options: JsonOptions),

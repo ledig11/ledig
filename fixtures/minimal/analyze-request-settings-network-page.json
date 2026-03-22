@@ -1,0 +1,38 @@
+{
+  "task_text": "打开设置并进入网络和 Internet",
+  "observation": {
+    "session_id": "mock-session-2ad320be",
+    "captured_at_utc": "2026-03-22T00:01:00Z",
+    "foreground_window_title": "网络和 Internet",
+    "foreground_window_uia_name": "设置",
+    "foreground_window_uia_automation_id": "SystemSettings",
+    "foreground_window_uia_class_name": "ApplicationFrameWindow",
+    "foreground_window_uia_control_type": "ControlType.Window",
+    "foreground_window_uia_is_enabled": true,
+    "foreground_window_uia_child_count": 5,
+    "foreground_window_uia_child_summary": "ControlType.Text:状态 | ControlType.Button:Wi-Fi | ControlType.Button:以太网 | ControlType.Button:VPN | ControlType.Button:代理",
+    "foreground_window_actionable_summary": "window_kind=settings; title=网络和 Internet; control_type=ControlType.Window; child_count=5; candidate_count=6; scanned_nodes=156; scan_depth=5; child_summary=ControlType.Text:状态 | ControlType.Button:Wi-Fi | ControlType.Button:以太网 | ControlType.Button:VPN | ControlType.Button:代理",
+    "foreground_window_candidate_elements": [
+      {
+        "name": "Wi-Fi",
+        "automation_id": "SystemSettings_Wifi",
+        "class_name": "NavigationViewItem",
+        "control_type": "ControlType.Button",
+        "is_enabled": true,
+        "is_offscreen": false,
+        "is_keyboard_focusable": true,
+        "has_keyboard_focus": true,
+        "ui_path": "foreground-window/child[1]",
+        "bounding_rect": {
+          "x": 420,
+          "y": 236,
+          "width": 120,
+          "height": 34
+        }
+      }
+    ],
+    "screen_width": 1280,
+    "screen_height": 720,
+    "screenshot_ref": "local://observation/20260322/000100/4ef6ab0c"
+  }
+}

@@ -6,7 +6,16 @@ from pathlib import Path
 from threading import Lock
 from typing import Any, Optional
 
-from app.contracts import AnalyzeDiagnosticEntry, AnalyzeLogEntry, FeedbackLogEntry, ObservationTraceEntry, SessionStateEntry, SessionSummaryEntry
+from app.contracts import (
+    AnalyzeDiagnosticEntry,
+    AnalyzeLogEntry,
+    DiagnosticTimelineEntry,
+    FeedbackLogEntry,
+    ObservationTraceEntry,
+    SessionReplayEventEntry,
+    SessionStateEntry,
+    SessionSummaryEntry,
+)
 
 
 BASE_DIR = Path(__file__).resolve().parents[2]
@@ -83,6 +92,10 @@ class LogStore:
                     model_type TEXT,
                     target_candidate_ui_path TEXT,
                     target_candidate_label TEXT,
+                    observation_candidate_count INTEGER NOT NULL DEFAULT 0,
+                    observation_scan_node_count INTEGER,
+                    observation_scan_depth INTEGER,
+                    observation_quality TEXT NOT NULL DEFAULT 'unknown',
                     planner_error_code TEXT,
                     planner_error TEXT,
                     raw_model_response_excerpt TEXT
@@ -252,6 +265,20 @@ class LogStore:
             self._ensure_column(connection, "analyze_diagnostics", "response_schema_version", "TEXT")
             self._ensure_column(connection, "analyze_diagnostics", "target_candidate_ui_path", "TEXT")
             self._ensure_column(connection, "analyze_diagnostics", "target_candidate_label", "TEXT")
+            self._ensure_column(
+                connection,
+                "analyze_diagnostics",
+                "observation_candidate_count",
+                "INTEGER NOT NULL DEFAULT 0",
+            )
+            self._ensure_column(connection, "analyze_diagnostics", "observation_scan_node_count", "INTEGER")
+            self._ensure_column(connection, "analyze_diagnostics", "observation_scan_depth", "INTEGER")
+            self._ensure_column(
+                connection,
+                "analyze_diagnostics",
+                "observation_quality",
+                "TEXT NOT NULL DEFAULT 'unknown'",
+            )
             connection.commit()
 
     def insert_analyze_log(
@@ -388,6 +415,10 @@ class LogStore:
         model_type: Optional[str],
         target_candidate_ui_path: Optional[str],
         target_candidate_label: Optional[str],
+        observation_candidate_count: int,
+        observation_scan_node_count: Optional[int],
+        observation_scan_depth: Optional[int],
+        observation_quality: str,
         planner_error_code: Optional[str],
         planner_error: Optional[str],
         raw_model_response_excerpt: Optional[str],
@@ -407,10 +438,14 @@ class LogStore:
                         model_type,
                         target_candidate_ui_path,
                         target_candidate_label,
+                        observation_candidate_count,
+                        observation_scan_node_count,
+                        observation_scan_depth,
+                        observation_quality,
                         planner_error_code,
                         planner_error,
                         raw_model_response_excerpt
-                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                     """,
                     (
                         created_at_utc,
@@ -423,6 +458,10 @@ class LogStore:
                         model_type,
                         target_candidate_ui_path,
                         target_candidate_label,
+                        observation_candidate_count,
+                        observation_scan_node_count,
+                        observation_scan_depth,
+                        observation_quality,
                         planner_error_code,
                         planner_error,
                         raw_model_response_excerpt,
@@ -668,7 +707,39 @@ class LogStore:
             for row in rows
         ]
 
-    def get_recent_analyze_diagnostics(self, limit: int = 20) -> list[AnalyzeDiagnosticEntry]:
+    def get_recent_analyze_diagnostics(
+        self,
+        limit: int = 20,
+        observation_quality: Optional[str] = None,
+        min_observation_candidate_count: int = 0,
+        planner_source: Optional[str] = None,
+        planner_error_code: Optional[str] = None,
+    ) -> list[AnalyzeDiagnosticEntry]:
+        where_clauses: list[str] = []
+        parameters: list[Any] = []
+
+        if observation_quality:
+            where_clauses.append("observation_quality = ?")
+            parameters.append(observation_quality)
+
+        if min_observation_candidate_count > 0:
+            where_clauses.append("observation_candidate_count >= ?")
+            parameters.append(min_observation_candidate_count)
+
+        if planner_source:
+            where_clauses.append("planner_source = ?")
+            parameters.append(planner_source)
+
+        if planner_error_code:
+            where_clauses.append("planner_error_code = ?")
+            parameters.append(planner_error_code)
+
+        where_sql = ""
+        if where_clauses:
+            where_sql = f"WHERE {' AND '.join(where_clauses)}"
+
+        parameters.append(limit)
+
         with self._connect() as connection:
             rows = connection.execute(
                 """
@@ -683,14 +754,21 @@ class LogStore:
                     model_type,
                     target_candidate_ui_path,
                     target_candidate_label,
+                    observation_candidate_count,
+                    observation_scan_node_count,
+                    observation_scan_depth,
+                    observation_quality,
                     planner_error_code,
                     planner_error,
                     raw_model_response_excerpt
                 FROM analyze_diagnostics
+                """
+                + where_sql
+                + """
                 ORDER BY created_at_utc DESC, id DESC
                 LIMIT ?
                 """,
-                (limit,),
+                tuple(parameters),
             ).fetchall()
 
         return [
@@ -705,9 +783,13 @@ class LogStore:
                 model_type=row[7],
                 target_candidate_ui_path=row[8],
                 target_candidate_label=row[9],
-                planner_error_code=row[10],
-                planner_error=row[11],
-                raw_model_response_excerpt=row[12],
+                observation_candidate_count=row[10],
+                observation_scan_node_count=row[11],
+                observation_scan_depth=row[12],
+                observation_quality=row[13],
+                planner_error_code=row[14],
+                planner_error=row[15],
+                raw_model_response_excerpt=row[16],
             )
             for row in rows
         ]
@@ -787,6 +869,121 @@ class LogStore:
                 screen_width=row[16],
                 screen_height=row[17],
                 screenshot_ref=row[18],
+            )
+            for row in rows
+        ]
+
+    def get_recent_diagnostic_timeline(
+        self,
+        *,
+        limit: int = 20,
+        session_id: Optional[str] = None,
+        screenshot_ref: Optional[str] = None,
+        observation_quality: Optional[str] = None,
+        min_observation_candidate_count: int = 0,
+        planner_source: Optional[str] = None,
+        planner_error_code: Optional[str] = None,
+        errors_only: bool = False,
+    ) -> list[DiagnosticTimelineEntry]:
+        where_clauses: list[str] = []
+        parameters: list[Any] = []
+
+        if session_id:
+            where_clauses.append("d.session_id = ?")
+            parameters.append(session_id)
+
+        if screenshot_ref:
+            where_clauses.append("a.screenshot_ref = ?")
+            parameters.append(screenshot_ref)
+
+        if observation_quality:
+            where_clauses.append("d.observation_quality = ?")
+            parameters.append(observation_quality)
+
+        if min_observation_candidate_count > 0:
+            where_clauses.append("d.observation_candidate_count >= ?")
+            parameters.append(min_observation_candidate_count)
+
+        if planner_source:
+            where_clauses.append("d.planner_source = ?")
+            parameters.append(planner_source)
+
+        if planner_error_code:
+            where_clauses.append("d.planner_error_code = ?")
+            parameters.append(planner_error_code)
+
+        if errors_only:
+            where_clauses.append("d.planner_error_code IS NOT NULL")
+
+        where_sql = ""
+        if where_clauses:
+            where_sql = f"WHERE {' AND '.join(where_clauses)}"
+
+        parameters.append(limit)
+
+        with self._connect() as connection:
+            rows = connection.execute(
+                f"""
+                SELECT
+                    d.created_at_utc,
+                    a.observation_captured_at_utc,
+                    a.task_text,
+                    d.session_id,
+                    d.step_id,
+                    a.action_type,
+                    d.planner_source,
+                    d.prompt_version,
+                    d.response_schema_version,
+                    d.model_provider,
+                    d.model_type,
+                    d.target_candidate_ui_path,
+                    d.target_candidate_label,
+                    d.observation_candidate_count,
+                    d.observation_scan_node_count,
+                    d.observation_scan_depth,
+                    d.observation_quality,
+                    a.foreground_window_title,
+                    a.screenshot_ref,
+                    d.planner_error_code,
+                    d.planner_error
+                FROM analyze_diagnostics d
+                LEFT JOIN analyze_logs a
+                    ON a.id = (
+                        SELECT MAX(al.id)
+                        FROM analyze_logs al
+                        WHERE al.session_id = d.session_id
+                          AND al.step_id = d.step_id
+                    )
+                {where_sql}
+                ORDER BY d.created_at_utc DESC, d.id DESC
+                LIMIT ?
+                """,
+                tuple(parameters),
+            ).fetchall()
+
+        return [
+            DiagnosticTimelineEntry(
+                diagnostic_created_at_utc=row[0],
+                observation_captured_at_utc=row[1],
+                task_text=row[2],
+                session_id=row[3],
+                step_id=row[4],
+                action_type=row[5],
+                planner_source=row[6],
+                prompt_version=row[7],
+                response_schema_version=row[8],
+                model_provider=row[9],
+                model_type=row[10],
+                target_candidate_ui_path=row[11],
+                target_candidate_label=row[12],
+                observation_candidate_count=row[13],
+                observation_scan_node_count=row[14],
+                observation_scan_depth=row[15],
+                observation_quality=row[16],
+                foreground_window_title=row[17],
+                screenshot_ref=row[18],
+                planner_error_code=row[19],
+                planner_error=row[20],
             )
             for row in rows
         ]
@@ -911,6 +1108,164 @@ class LogStore:
             )
             for row in rows
         ]
+
+    def get_session_replay_events(
+        self,
+        *,
+        session_id: str,
+        limit: int = 200,
+    ) -> list[SessionReplayEventEntry]:
+        with self._connect() as connection:
+            rows = connection.execute(
+                """
+                SELECT
+                    created_at_utc,
+                    event_type,
+                    session_id,
+                    step_id,
+                    action_type,
+                    feedback_type,
+                    planner_source,
+                    observation_quality,
+                    screenshot_ref,
+                    note
+                FROM (
+                    SELECT
+                        created_at_utc,
+                        'analyze' AS event_type,
+                        session_id,
+                        step_id,
+                        action_type,
+                        NULL AS feedback_type,
+                        NULL AS planner_source,
+                        NULL AS observation_quality,
+                        screenshot_ref,
+                        instruction AS note,
+                        id AS row_id,
+                        0 AS event_rank
+                    FROM analyze_logs
+                    WHERE session_id = ?
+
+                    UNION ALL
+
+                    SELECT
+                        created_at_utc,
+                        'diagnostic' AS event_type,
+                        session_id,
+                        step_id,
+                        NULL AS action_type,
+                        NULL AS feedback_type,
+                        planner_source,
+                        observation_quality,
+                        NULL AS screenshot_ref,
+                        planner_error AS note,
+                        id AS row_id,
+                        1 AS event_rank
+                    FROM analyze_diagnostics
+                    WHERE session_id = ?
+
+                    UNION ALL
+
+                    SELECT
+                        created_at_utc,
+                        'feedback' AS event_type,
+                        session_id,
+                        step_id,
+                        NULL AS action_type,
+                        feedback_type,
+                        NULL AS planner_source,
+                        NULL AS observation_quality,
+                        NULL AS screenshot_ref,
+                        message AS note,
+                        id AS row_id,
+                        2 AS event_rank
+                    FROM feedback_logs
+                    WHERE session_id = ?
+                )
+                ORDER BY created_at_utc DESC, event_rank DESC, row_id DESC
+                LIMIT ?
+                """,
+                (session_id, session_id, session_id, limit),
+            ).fetchall()
+
+        rows_in_time_order = list(reversed(rows))
+        return [
+            SessionReplayEventEntry(
+                created_at_utc=row[0],
+                event_type=row[1],
+                session_id=row[2],
+                step_id=row[3],
+                action_type=row[4],
+                feedback_type=row[5],
+                planner_source=row[6],
+                observation_quality=row[7],
+                screenshot_ref=row[8],
+                note=row[9],
+            )
+            for row in rows_in_time_order
+        ]
+
+    def get_session_state(self, session_id: str) -> Optional[SessionStateEntry]:
+        with self._connect() as connection:
+            row = connection.execute(
+                """
+                SELECT
+                    session_id,
+                    task_text,
+                    current_step_id,
+                    current_action_type,
+                    current_instruction,
+                    last_feedback_type,
+                    session_status,
+                    planner_source,
+                    prompt_version,
+                    response_schema_version,
+                    model_provider,
+                    model_type,
+                    target_candidate_ui_path,
+                    target_candidate_label,
+                    last_planner_error_code,
+                    last_planner_error,
+                    completed_step_count,
+                    incorrect_feedback_count,
+                    reanalyze_feedback_count,
+                    last_foreground_window_title,
+                    last_screenshot_ref,
+                    last_updated_at_utc
+                FROM session_states
+                WHERE session_id = ?
+                LIMIT 1
+                """,
+                (session_id,),
+            ).fetchone()
+
+        if row is None:
+            return None
+
+        return SessionStateEntry(
+            session_id=row[0],
+            task_text=row[1],
+            current_step_id=row[2],
+            current_action_type=row[3],
+            current_instruction=row[4],
+            last_feedback_type=row[5],
+            session_status=row[6],
+            planner_source=row[7],
+            prompt_version=row[8],
+            response_schema_version=row[9],
+            model_provider=row[10],
+            model_type=row[11],
+            target_candidate_ui_path=row[12],
+            target_candidate_label=row[13],
+            last_planner_error_code=row[14],
+            last_planner_error=row[15],
+            completed_step_count=row[16],
+            incorrect_feedback_count=row[17],
+            reanalyze_feedback_count=row[18],
+            last_foreground_window_title=row[19],
+            last_screenshot_ref=row[20],
+            last_updated_at_utc=row[21],
+        )
 
     def _connect(self) -> sqlite3.Connection:
         return sqlite3.connect(self._database_path)

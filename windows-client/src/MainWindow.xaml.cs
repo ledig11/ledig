@@ -9,24 +9,17 @@ public partial class MainWindow : Window
 {
     private readonly StepGuideViewModel _viewModel;
     private readonly OverlayWindow _overlayWindow;
+    private readonly IRealtimeEventClient _realtimeEventClient;
+    private CancellationTokenSource? _realtimeCts;
 
-    public MainWindow(RuntimeModelConfig runtimeModelConfig)
+    public MainWindow(StepGuideViewModel viewModel, IRealtimeEventClient realtimeEventClient)
     {
         InitializeComponent();
-
-        IAnalyzeApiClient apiClient = new AnalyzeApiClient(new Uri("http://127.0.0.1:8000/"), runtimeModelConfig);
-        IObservationHistoryStore observationHistoryStore = new ObservationHistoryStore();
-        IForegroundWindowAutomationProvider foregroundWindowAutomationProvider = new ForegroundWindowAutomationProvider();
-        IObservationContextProvider observationContextProvider = new ObservationContextProvider(foregroundWindowAutomationProvider);
-        IObservationManifestStore observationManifestStore = new ObservationManifestStore();
-        _viewModel = new StepGuideViewModel(
-            apiClient,
-            observationContextProvider,
-            observationHistoryStore,
-            observationManifestStore,
-            runtimeModelConfig);
+        _viewModel = viewModel;
         _overlayWindow = new OverlayWindow();
+        _realtimeEventClient = realtimeEventClient;
         DataContext = _viewModel;
+        Loaded += MainWindow_Loaded;
     }
 
     private async void AnalyzeButton_Click(object sender, RoutedEventArgs e)
@@ -101,8 +94,21 @@ public partial class MainWindow : Window
 
     protected override void OnClosed(EventArgs e)
     {
+        _realtimeCts?.Cancel();
+        _realtimeCts?.Dispose();
+        _realtimeCts = null;
         _overlayWindow.Close();
 
         base.OnClosed(e);
+    }
+
+    private void MainWindow_Loaded(object sender, RoutedEventArgs e)
+    {
+        _realtimeCts = new CancellationTokenSource();
+        _ = _realtimeEventClient.RunAsync(
+            onEvent: eventPayload => Dispatcher.Invoke(() => _viewModel.MarkRealtimeEventReceived(eventPayload)),
+            onConnected: () => Dispatcher.Invoke(_viewModel.MarkRealtimeConnected),
+            onDisconnected: reason => Dispatcher.Invoke(() => _viewModel.MarkRealtimeDisconnected(reason)),
+            cancellationToken: _realtimeCts.Token);
     }
 }
