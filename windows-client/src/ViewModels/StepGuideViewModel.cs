@@ -1,4 +1,5 @@
 using System.ComponentModel;
+using System.Collections.ObjectModel;
 using System.Diagnostics;
 using System.Runtime.CompilerServices;
 using WindowsStepGuide.Client.Contracts;
@@ -12,12 +13,19 @@ public sealed class StepGuideViewModel : INotifyPropertyChanged
     private const double PreviewCanvasHeight = 140;
 
     private readonly IAnalyzeApiClient _apiClient;
+    private readonly IObservationContextProvider _observationContextProvider;
+    private readonly IObservationHistoryStore _observationHistoryStore;
+    private readonly IObservationManifestStore _observationManifestStore;
+    private readonly RuntimeModelConfig _runtimeModelConfig;
     private string _taskText = "打开设置";
     private string _instruction = "点击“分析下一步”开始。";
     private string _highlightText = "暂无高亮区域。";
     private string _lastFeedbackText = "暂无 feedback 提交。";
     private string _lastFeedbackType = "none";
     private string _lastObservationSummary = "暂无 observation。";
+    private string _lastObservationAssetSummary = "暂无本地 observation 资产。";
+    private string _lastObservationAutomationSummary = "暂无前台窗口 UIA 信息。";
+    private string _runtimeModelSummary = "模型配置未初始化。";
     private string _statusMessage = "等待请求后端。";
     private string _analyzeNextButtonText = "分析下一步";
     private string _reanalyzeButtonText = "重新分析";
@@ -34,9 +42,20 @@ public sealed class StepGuideViewModel : INotifyPropertyChanged
     private double _previewWidth;
     private double _previewHeight;
 
-    public StepGuideViewModel(IAnalyzeApiClient apiClient)
+    public StepGuideViewModel(
+        IAnalyzeApiClient apiClient,
+        IObservationContextProvider observationContextProvider,
+        IObservationHistoryStore observationHistoryStore,
+        IObservationManifestStore observationManifestStore,
+        RuntimeModelConfig runtimeModelConfig)
     {
         _apiClient = apiClient;
+        _observationContextProvider = observationContextProvider;
+        _observationHistoryStore = observationHistoryStore;
+        _observationManifestStore = observationManifestStore;
+        _runtimeModelConfig = runtimeModelConfig;
+        _runtimeModelSummary =
+            $"model_type={_runtimeModelConfig.ModelType}\napi_key={_runtimeModelConfig.GetMaskedApiKey()}";
     }
 
     public event PropertyChangedEventHandler? PropertyChanged;
@@ -76,6 +95,22 @@ public sealed class StepGuideViewModel : INotifyPropertyChanged
         get => _lastObservationSummary;
         private set => SetField(ref _lastObservationSummary, value);
     }
+
+    public string LastObservationAssetSummary
+    {
+        get => _lastObservationAssetSummary;
+        private set => SetField(ref _lastObservationAssetSummary, value);
+    }
+
+    public string LastObservationAutomationSummary
+    {
+        get => _lastObservationAutomationSummary;
+        private set => SetField(ref _lastObservationAutomationSummary, value);
+    }
+
+    public ReadOnlyObservableCollection<ObservationHistoryItem> RecentObservations => _observationHistoryStore.Items;
+
+    public string RuntimeModelSummary => _runtimeModelSummary;
 
     public string CurrentSessionId => _currentSessionId;
 
@@ -184,6 +219,8 @@ public sealed class StepGuideViewModel : INotifyPropertyChanged
             return;
         }
 
+        ObservationManifestSaveResult manifestSaveResult = TrySaveObservationManifest(observation);
+
         try
         {
             CanAnalyze = false;
@@ -196,7 +233,10 @@ public sealed class StepGuideViewModel : INotifyPropertyChanged
             });
 
             LastObservationSummary =
-                $"foreground_window_title={observation.ForegroundWindowTitle}\nscreen={observation.ScreenWidth}x{observation.ScreenHeight}\nscreenshot_ref={observation.ScreenshotRef}";
+                $"foreground_window_title={observation.ForegroundWindowTitle}\nforeground_window_uia_control_type={observation.ForegroundWindowUiaControlType}\nforeground_window_actionable_summary={observation.ForegroundWindowActionableSummary}\ncandidate_element_count={observation.ForegroundWindowCandidateElements.Count}\nscreen={observation.ScreenWidth}x{observation.ScreenHeight}\nscreenshot_ref={observation.ScreenshotRef}";
+            LastObservationAssetSummary = FormatObservationAssetSummary(manifestSaveResult);
+            LastObservationAutomationSummary = manifestSaveResult.AutomationSummary;
+            TryRecordObservation(observation, manifestSaveResult);
             _currentSessionId = string.IsNullOrWhiteSpace(response.SessionId)
                 ? "local-session-pending"
                 : response.SessionId;
@@ -211,6 +251,9 @@ public sealed class StepGuideViewModel : INotifyPropertyChanged
         }
         catch (Exception ex)
         {
+            LastObservationAssetSummary = FormatObservationAssetSummary(manifestSaveResult);
+            LastObservationAutomationSummary = manifestSaveResult.AutomationSummary;
+            TryRecordObservation(observation, manifestSaveResult);
             HighlightText = "暂无高亮区域。";
             UpdateHighlightPreview(null);
             StatusMessage = $"请求失败: {ex.Message}";
@@ -225,15 +268,55 @@ public sealed class StepGuideViewModel : INotifyPropertyChanged
 
     public ObservationDto CreateObservation()
     {
-        return new ObservationDto
+        string? sessionId = _currentSessionId == "local-session-pending" ? null : _currentSessionId;
+        return _observationContextProvider.CreateObservation(sessionId);
+    }
+
+    private void TryRecordObservation(ObservationDto observation, ObservationManifestSaveResult manifestSaveResult)
+    {
+        try
         {
-            SessionId = _currentSessionId == "local-session-pending" ? null : _currentSessionId,
-            CapturedAtUtc = DateTime.UtcNow.ToString("O"),
-            ForegroundWindowTitle = "Windows Step Guide Panel",
-            ScreenWidth = 1280,
-            ScreenHeight = 720,
-            ScreenshotRef = "placeholder://no-screenshot",
-        };
+            _observationHistoryStore.Add(
+                observation,
+                manifestSaveResult.ScreenshotStatus,
+                manifestSaveResult.ScreenshotLocalPath,
+                manifestSaveResult.AutomationControlType,
+                manifestSaveResult.AutomationClassName,
+                manifestSaveResult.AutomationId);
+        }
+        catch
+        {
+            // Keep the debug-only history isolated from the main analyze flow.
+        }
+    }
+
+    private ObservationManifestSaveResult TrySaveObservationManifest(ObservationDto observation)
+    {
+        try
+        {
+            return _observationManifestStore.Save(observation);
+        }
+        catch
+        {
+            // Keep manifest persistence isolated from the main analyze flow.
+            return new ObservationManifestSaveResult
+            {
+                ManifestFilePath = null,
+                ScreenshotStatus = "manifest-save-failed",
+                ScreenshotLocalPath = null,
+            };
+        }
+    }
+
+    private static string FormatObservationAssetSummary(ObservationManifestSaveResult manifestSaveResult)
+    {
+        string screenshotPath = string.IsNullOrWhiteSpace(manifestSaveResult.ScreenshotLocalPath)
+            ? "none"
+            : manifestSaveResult.ScreenshotLocalPath;
+        string manifestPath = string.IsNullOrWhiteSpace(manifestSaveResult.ManifestFilePath)
+            ? "none"
+            : manifestSaveResult.ManifestFilePath;
+        return $"screenshot_status={manifestSaveResult.ScreenshotStatus}\nscreenshot_local_path={screenshotPath}\nmanifest_file={manifestPath}";
     }
 
     public void MarkAnalysisStarted()

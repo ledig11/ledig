@@ -1,15 +1,15 @@
 {
-  "session_id": "mock-session-001",
-  "step_id": "step-001",
-  "instruction": "请先确认当前窗口与任务“打开设置”相关，然后点击继续。",
-  "action_type": "confirm",
+  "session_id": "mock-session-857329ea",
+  "step_id": "step-68bc5f5e",
+  "instruction": "当前前台窗口“设置”已经与任务“打开设置”相关。请先检查这个更接近目标的控件：ControlType.Button:蓝牙和设备 (automation_id=SystemSettings_Bluetooth, path=foreground-window/child[1])。",
+  "action_type": "confirm_in_window",
   "requires_user_action": true,
   "highlight": {
     "rect": {
-      "x": 640,
-      "y": 320,
-      "width": 280,
-      "height": 120
+      "x": 44,
+      "y": 224,
+      "width": 160,
+      "height": 36
     }
   }
 }

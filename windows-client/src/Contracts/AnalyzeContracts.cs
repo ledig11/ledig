@@ -11,9 +11,32 @@ public sealed class ObservationDto
     public string? SessionId { get; set; }
     public string CapturedAtUtc { get; set; } = string.Empty;
     public string ForegroundWindowTitle { get; set; } = string.Empty;
+    public string ForegroundWindowUiaName { get; set; } = string.Empty;
+    public string ForegroundWindowUiaAutomationId { get; set; } = string.Empty;
+    public string ForegroundWindowUiaClassName { get; set; } = string.Empty;
+    public string ForegroundWindowUiaControlType { get; set; } = string.Empty;
+    public bool ForegroundWindowUiaIsEnabled { get; set; }
+    public int ForegroundWindowUiaChildCount { get; set; }
+    public string ForegroundWindowUiaChildSummary { get; set; } = string.Empty;
+    public string ForegroundWindowActionableSummary { get; set; } = string.Empty;
+    public List<ObservationCandidateElementDto> ForegroundWindowCandidateElements { get; set; } = [];
     public int ScreenWidth { get; set; }
     public int ScreenHeight { get; set; }
     public string ScreenshotRef { get; set; } = string.Empty;
+}
+
+public sealed class ObservationCandidateElementDto
+{
+    public string Name { get; set; } = string.Empty;
+    public string AutomationId { get; set; } = string.Empty;
+    public string ClassName { get; set; } = string.Empty;
+    public string ControlType { get; set; } = string.Empty;
+    public bool IsEnabled { get; set; }
+    public bool IsOffscreen { get; set; }
+    public bool IsKeyboardFocusable { get; set; }
+    public bool HasKeyboardFocus { get; set; }
+    public string UiPath { get; set; } = string.Empty;
+    public RectResponse BoundingRect { get; set; } = new();
 }
 
 public sealed class NextStepResponse

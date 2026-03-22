@@ -1,5 +1,6 @@
 using System.Net.Http;
 using System.Net.Http.Json;
+using System.Linq;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using WindowsStepGuide.Client.Contracts;
@@ -23,34 +24,69 @@ public sealed class AnalyzeApiClient : IAnalyzeApiClient
     };
 
     private readonly HttpClient _httpClient;
+    private readonly RuntimeModelConfig _runtimeModelConfig;
 
-    public AnalyzeApiClient(Uri baseAddress)
+    public AnalyzeApiClient(Uri baseAddress, RuntimeModelConfig runtimeModelConfig)
     {
         _httpClient = new HttpClient
         {
             BaseAddress = baseAddress,
         };
+        _runtimeModelConfig = runtimeModelConfig;
     }
 
     public async Task<NextStepResponse> AnalyzeAsync(AnalyzeRequest request, CancellationToken cancellationToken = default)
     {
-        using HttpResponseMessage response = await _httpClient.PostAsJsonAsync(
-            "api/analyze",
-            new
-            {
-                task_text = request.TaskText,
-                observation = new
+        using HttpRequestMessage httpRequest = new(HttpMethod.Post, "api/analyze")
+        {
+            Content = JsonContent.Create(
+                new
                 {
-                    session_id = request.Observation.SessionId,
-                    captured_at_utc = request.Observation.CapturedAtUtc,
-                    foreground_window_title = request.Observation.ForegroundWindowTitle,
-                    screen_width = request.Observation.ScreenWidth,
-                    screen_height = request.Observation.ScreenHeight,
-                    screenshot_ref = request.Observation.ScreenshotRef,
+                    task_text = request.TaskText,
+                    observation = new
+                    {
+                        session_id = request.Observation.SessionId,
+                        captured_at_utc = request.Observation.CapturedAtUtc,
+                        foreground_window_title = request.Observation.ForegroundWindowTitle,
+                        foreground_window_uia_name = request.Observation.ForegroundWindowUiaName,
+                        foreground_window_uia_automation_id = request.Observation.ForegroundWindowUiaAutomationId,
+                        foreground_window_uia_class_name = request.Observation.ForegroundWindowUiaClassName,
+                        foreground_window_uia_control_type = request.Observation.ForegroundWindowUiaControlType,
+                        foreground_window_uia_is_enabled = request.Observation.ForegroundWindowUiaIsEnabled,
+                        foreground_window_uia_child_count = request.Observation.ForegroundWindowUiaChildCount,
+                        foreground_window_uia_child_summary = request.Observation.ForegroundWindowUiaChildSummary,
+                        foreground_window_actionable_summary = request.Observation.ForegroundWindowActionableSummary,
+                        foreground_window_candidate_elements = request.Observation.ForegroundWindowCandidateElements.Select(
+                            candidate => new
+                            {
+                                name = candidate.Name,
+                                automation_id = candidate.AutomationId,
+                                class_name = candidate.ClassName,
+                                control_type = candidate.ControlType,
+                                is_enabled = candidate.IsEnabled,
+                                is_offscreen = candidate.IsOffscreen,
+                                is_keyboard_focusable = candidate.IsKeyboardFocusable,
+                                has_keyboard_focus = candidate.HasKeyboardFocus,
+                                ui_path = candidate.UiPath,
+                                bounding_rect = new
+                                {
+                                    x = candidate.BoundingRect.X,
+                                    y = candidate.BoundingRect.Y,
+                                    width = candidate.BoundingRect.Width,
+                                    height = candidate.BoundingRect.Height,
+                                },
+                            }),
+                        screen_width = request.Observation.ScreenWidth,
+                        screen_height = request.Observation.ScreenHeight,
+                        screenshot_ref = request.Observation.ScreenshotRef,
+                    },
                 },
-            },
-            JsonOptions,
-            cancellationToken);
+                options: JsonOptions),
+        };
+        httpRequest.Headers.Add("X-Model-Type", _runtimeModelConfig.ModelType);
+        httpRequest.Headers.Add("X-API-Key", _runtimeModelConfig.ApiKey);
+
+        using HttpResponseMessage response = await _httpClient.SendAsync(httpRequest, cancellationToken);
 
         response.EnsureSuccessStatusCode();
 

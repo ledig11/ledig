@@ -10,12 +10,21 @@ public partial class MainWindow : Window
     private readonly StepGuideViewModel _viewModel;
     private readonly OverlayWindow _overlayWindow;
 
-    public MainWindow()
+    public MainWindow(RuntimeModelConfig runtimeModelConfig)
     {
         InitializeComponent();
 
-        IAnalyzeApiClient apiClient = new AnalyzeApiClient(new Uri("http://127.0.0.1:8000/"));
-        _viewModel = new StepGuideViewModel(apiClient);
+        IAnalyzeApiClient apiClient = new AnalyzeApiClient(new Uri("http://127.0.0.1:8000/"), runtimeModelConfig);
+        IObservationHistoryStore observationHistoryStore = new ObservationHistoryStore();
+        IForegroundWindowAutomationProvider foregroundWindowAutomationProvider = new ForegroundWindowAutomationProvider();
+        IObservationContextProvider observationContextProvider = new ObservationContextProvider(foregroundWindowAutomationProvider);
+        IObservationManifestStore observationManifestStore = new ObservationManifestStore();
+        _viewModel = new StepGuideViewModel(
+            apiClient,
+            observationContextProvider,
+            observationHistoryStore,
+            observationManifestStore,
+            runtimeModelConfig);
         _overlayWindow = new OverlayWindow();
         DataContext = _viewModel;
     }

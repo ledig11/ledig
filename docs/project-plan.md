@@ -12,11 +12,13 @@ Windows-first step-by-step computer operation guidance assistant MVP.
 - Windows WPF client skeleton
 - Floating panel
 - Overlay highlighter
+- Local debug visibility for current observation and recent observations
 
 ## Phase 3
-- Screenshot capture
-- UI Automation integration
-- End-to-end mock workflow
+- Primary-screen local screenshot capture
+- Foreground-window UIA summary integration
+- Observation trace and lightweight replay-oriented inspection
+- End-to-end observation-aware mock workflow
 
 ## Phase 4
 - Real task scenario: software installation guidance

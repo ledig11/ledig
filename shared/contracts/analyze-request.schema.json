@@ -16,6 +16,15 @@
       "required": [
         "captured_at_utc",
         "foreground_window_title",
+        "foreground_window_uia_name",
+        "foreground_window_uia_automation_id",
+        "foreground_window_uia_class_name",
+        "foreground_window_uia_control_type",
+        "foreground_window_uia_is_enabled",
+        "foreground_window_uia_child_count",
+        "foreground_window_uia_child_summary",
+        "foreground_window_actionable_summary",
+        "foreground_window_candidate_elements",
         "screen_width",
         "screen_height",
         "screenshot_ref"
@@ -29,6 +38,97 @@
         },
         "foreground_window_title": {
           "type": "string"
+        },
+        "foreground_window_uia_name": {
+          "type": "string"
+        },
+        "foreground_window_uia_automation_id": {
+          "type": "string"
+        },
+        "foreground_window_uia_class_name": {
+          "type": "string"
+        },
+        "foreground_window_uia_control_type": {
+          "type": "string"
+        },
+        "foreground_window_uia_is_enabled": {
+          "type": "boolean"
+        },
+        "foreground_window_uia_child_count": {
+          "type": "integer"
+        },
+        "foreground_window_uia_child_summary": {
+          "type": "string"
+        },
+        "foreground_window_actionable_summary": {
+          "type": "string"
+        },
+        "foreground_window_candidate_elements": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "name",
+              "automation_id",
+              "class_name",
+              "control_type",
+              "is_enabled",
+              "is_offscreen",
+              "is_keyboard_focusable",
+              "has_keyboard_focus",
+              "ui_path",
+              "bounding_rect"
+            ],
+            "properties": {
+              "name": {
+                "type": "string"
+              },
+              "automation_id": {
+                "type": "string"
+              },
+              "class_name": {
+                "type": "string"
+              },
+              "control_type": {
+                "type": "string"
+              },
+              "is_enabled": {
+                "type": "boolean"
+              },
+              "is_offscreen": {
+                "type": "boolean"
+              },
+              "is_keyboard_focusable": {
+                "type": "boolean"
+              },
+              "has_keyboard_focus": {
+                "type": "boolean"
+              },
+              "ui_path": {
+                "type": "string"
+              },
+              "bounding_rect": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": ["x", "y", "width", "height"],
+                "properties": {
+                  "x": {
+                    "type": "integer"
+                  },
+                  "y": {
+                    "type": "integer"
+                  },
+                  "width": {
+                    "type": "integer"
+                  },
+                  "height": {
+                    "type": "integer"
+                  }
+                }
+              }
+            }
+          }
         },
         "screen_width": {
           "type": "integer"

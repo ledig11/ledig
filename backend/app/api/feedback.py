@@ -17,6 +17,7 @@ def submit_feedback(
     request: StepFeedbackRequest,
     log_store: LogStore = Depends(get_log_store),
 ) -> StepFeedbackResponse:
+    created_at_utc = datetime.now(timezone.utc).isoformat()
     response = StepFeedbackResponse(
         accepted=True,
         session_id=request.session_id,
@@ -25,12 +26,18 @@ def submit_feedback(
         message="feedback received",
     )
     log_store.insert_feedback_log(
-        created_at_utc=datetime.now(timezone.utc).isoformat(),
+        created_at_utc=created_at_utc,
         session_id=request.session_id,
         step_id=request.step_id,
         feedback_type=request.feedback_type,
         comment=request.comment,
         accepted=response.accepted,
         message=response.message,
+    )
+    log_store.update_session_state_after_feedback(
+        session_id=request.session_id,
+        step_id=request.step_id,
+        feedback_type=request.feedback_type,
+        last_updated_at_utc=created_at_utc,
     )
     return response

@@ -3,9 +3,53 @@
   "observation": {
     "session_id": null,
     "captured_at_utc": "2026-03-17T00:00:00Z",
-    "foreground_window_title": "Windows Step Guide Panel",
+    "foreground_window_title": "设置",
+    "foreground_window_uia_name": "设置",
+    "foreground_window_uia_automation_id": "SystemSettings",
+    "foreground_window_uia_class_name": "ApplicationFrameWindow",
+    "foreground_window_uia_control_type": "ControlType.Window",
+    "foreground_window_uia_is_enabled": true,
+    "foreground_window_uia_child_count": 3,
+    "foreground_window_uia_child_summary": "ControlType.Button:系统 | ControlType.Button:蓝牙和设备 | ControlType.Button:网络和 Internet",
+    "foreground_window_actionable_summary": "window_kind=settings; title=设置; control_type=ControlType.Window; child_count=3; child_summary=ControlType.Button:系统 | ControlType.Button:蓝牙和设备 | ControlType.Button:网络和 Internet",
+    "foreground_window_candidate_elements": [
+      {
+        "name": "系统",
+        "automation_id": "SystemSettings_Accounts",
+        "class_name": "NavigationViewItem",
+        "control_type": "ControlType.Button",
+        "is_enabled": true,
+        "is_offscreen": false,
+        "is_keyboard_focusable": true,
+        "has_keyboard_focus": false,
+        "ui_path": "foreground-window/child[0]",
+        "bounding_rect": {
+          "x": 44,
+          "y": 184,
+          "width": 120,
+          "height": 36
+        }
+      },
+      {
+        "name": "蓝牙和设备",
+        "automation_id": "SystemSettings_Bluetooth",
+        "class_name": "NavigationViewItem",
+        "control_type": "ControlType.Button",
+        "is_enabled": true,
+        "is_offscreen": false,
+        "is_keyboard_focusable": true,
+        "has_keyboard_focus": true,
+        "ui_path": "foreground-window/child[1]",
+        "bounding_rect": {
+          "x": 44,
+          "y": 224,
+          "width": 160,
+          "height": 36
+        }
+      }
+    ],
     "screen_width": 1280,
     "screen_height": 720,
-    "screenshot_ref": "placeholder://no-screenshot"
+    "screenshot_ref": "local://observation/20260317/000000/7f3a2c1d"
   }
 }

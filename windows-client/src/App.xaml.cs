@@ -1,4 +1,5 @@
 using System.Windows;
+using WindowsStepGuide.Client.Services;
 
 namespace WindowsStepGuide.Client
 {
@@ -8,7 +9,16 @@ namespace WindowsStepGuide.Client
         {
             base.OnStartup(e);
 
-            var window = new MainWindow();
+            var configWindow = new StartupConfigWindow();
+            bool? configAccepted = configWindow.ShowDialog();
+            if (configAccepted != true || configWindow.RuntimeModelConfig is null)
+            {
+                Shutdown();
+                return;
+            }
+
+            RuntimeModelConfig runtimeModelConfig = configWindow.RuntimeModelConfig;
+            var window = new MainWindow(runtimeModelConfig);
             window.Show();
         }
     }
