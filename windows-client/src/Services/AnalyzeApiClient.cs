@@ -92,8 +92,12 @@ public sealed class AnalyzeApiClient : IAnalyzeApiClient
         httpRequest.Headers.Add("X-API-Key", _runtimeModelConfig.ApiKey);
 
         using HttpResponseMessage response = await _httpClient.SendAsync(httpRequest, cancellationToken);
-
-        response.EnsureSuccessStatusCode();
+        if (!response.IsSuccessStatusCode)
+        {
+            string errorBody = await response.Content.ReadAsStringAsync(cancellationToken);
+            throw new HttpRequestException(
+                $"analyze failed: {(int)response.StatusCode} {response.ReasonPhrase}; body={errorBody}");
+        }
 
         NextStepResponse? payload = await response.Content.ReadFromJsonAsync<NextStepResponse>(JsonOptions, cancellationToken);
         return payload ?? new NextStepResponse
@@ -117,8 +121,12 @@ public sealed class AnalyzeApiClient : IAnalyzeApiClient
             },
             JsonOptions,
             cancellationToken);
-
-        response.EnsureSuccessStatusCode();
+        if (!response.IsSuccessStatusCode)
+        {
+            string errorBody = await response.Content.ReadAsStringAsync(cancellationToken);
+            throw new HttpRequestException(
+                $"feedback failed: {(int)response.StatusCode} {response.ReasonPhrase}; body={errorBody}");
+        }
 
         StepFeedbackResponse? payload = await response.Content.ReadFromJsonAsync<StepFeedbackResponse>(
             JsonOptions,

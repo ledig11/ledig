@@ -6,44 +6,44 @@ from pydantic import BaseModel, Field
 
 
 class CandidateRectDto(BaseModel):
-    x: int
-    y: int
-    width: int
-    height: int
+    x: int = 0
+    y: int = 0
+    width: int = 0
+    height: int = 0
 
 
 class ObservationCandidateElementDto(BaseModel):
-    name: str
-    automation_id: str
-    class_name: str
-    control_type: str
-    is_enabled: bool
-    is_offscreen: bool
-    is_keyboard_focusable: bool
-    has_keyboard_focus: bool
-    ui_path: str
-    bounding_rect: CandidateRectDto
+    name: Optional[str] = ""
+    automation_id: Optional[str] = ""
+    class_name: Optional[str] = ""
+    control_type: Optional[str] = ""
+    is_enabled: Optional[bool] = False
+    is_offscreen: Optional[bool] = False
+    is_keyboard_focusable: Optional[bool] = False
+    has_keyboard_focus: Optional[bool] = False
+    ui_path: Optional[str] = ""
+    bounding_rect: CandidateRectDto = Field(default_factory=CandidateRectDto)
 
 
 class ObservationDto(BaseModel):
     session_id: Optional[str] = None
-    captured_at_utc: str
-    foreground_window_title: str
-    foreground_window_uia_name: str
-    foreground_window_uia_automation_id: str
-    foreground_window_uia_class_name: str
-    foreground_window_uia_control_type: str
-    foreground_window_uia_is_enabled: bool
-    foreground_window_uia_child_count: int
-    foreground_window_uia_child_summary: str
-    foreground_window_actionable_summary: str
+    captured_at_utc: Optional[str] = ""
+    foreground_window_title: Optional[str] = ""
+    foreground_window_uia_name: Optional[str] = ""
+    foreground_window_uia_automation_id: Optional[str] = ""
+    foreground_window_uia_class_name: Optional[str] = ""
+    foreground_window_uia_control_type: Optional[str] = ""
+    foreground_window_uia_is_enabled: Optional[bool] = False
+    foreground_window_uia_child_count: Optional[int] = 0
+    foreground_window_uia_child_summary: Optional[str] = ""
+    foreground_window_actionable_summary: Optional[str] = ""
     foreground_window_candidate_count: Optional[int] = None
     foreground_window_scan_node_count: Optional[int] = None
     foreground_window_scan_depth: Optional[int] = None
-    foreground_window_candidate_elements: list[ObservationCandidateElementDto]
-    screen_width: int
-    screen_height: int
-    screenshot_ref: str
+    foreground_window_candidate_elements: list[ObservationCandidateElementDto] = Field(default_factory=list)
+    screen_width: Optional[int] = 0
+    screen_height: Optional[int] = 0
+    screenshot_ref: Optional[str] = ""
     screenshot_status: Optional[str] = None
     screenshot_local_path: Optional[str] = None
 

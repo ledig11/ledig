@@ -73,6 +73,18 @@ def parse_actionable_summary_metrics(actionable_summary: str) -> dict[str, Optio
     return result
 
 
+def normalize_text(value: Optional[str]) -> str:
+    return value or ""
+
+
+def normalize_int(value: Optional[int], fallback: int = 0) -> int:
+    return value if value is not None else fallback
+
+
+def normalize_bool(value: Optional[bool], fallback: bool = False) -> bool:
+    return value if value is not None else fallback
+
+
 def classify_observation_quality(
     *,
     candidate_count: int,
@@ -131,7 +143,8 @@ async def analyze(
     created_at_utc = datetime.now(timezone.utc).isoformat()
     planner_result = step_planner.analyze(request)
     response = planner_result.response
-    observation_metrics = parse_actionable_summary_metrics(request.observation.foreground_window_actionable_summary)
+    normalized_actionable_summary = normalize_text(request.observation.foreground_window_actionable_summary)
+    observation_metrics = parse_actionable_summary_metrics(normalized_actionable_summary)
     observation_candidate_count = (
         request.observation.foreground_window_candidate_count
         if request.observation.foreground_window_candidate_count is not None
@@ -160,23 +173,23 @@ async def analyze(
         action_type=response.action_type,
         instruction=response.instruction,
         observation_session_id=request.observation.session_id,
-        observation_captured_at_utc=request.observation.captured_at_utc,
-        foreground_window_title=request.observation.foreground_window_title,
-        foreground_window_uia_name=request.observation.foreground_window_uia_name,
-        foreground_window_uia_automation_id=request.observation.foreground_window_uia_automation_id,
-        foreground_window_uia_class_name=request.observation.foreground_window_uia_class_name,
-        foreground_window_uia_control_type=request.observation.foreground_window_uia_control_type,
-        foreground_window_uia_is_enabled=request.observation.foreground_window_uia_is_enabled,
-        foreground_window_uia_child_count=request.observation.foreground_window_uia_child_count,
-        foreground_window_uia_child_summary=request.observation.foreground_window_uia_child_summary,
-        foreground_window_actionable_summary=request.observation.foreground_window_actionable_summary,
+        observation_captured_at_utc=normalize_text(request.observation.captured_at_utc),
+        foreground_window_title=normalize_text(request.observation.foreground_window_title),
+        foreground_window_uia_name=normalize_text(request.observation.foreground_window_uia_name),
+        foreground_window_uia_automation_id=normalize_text(request.observation.foreground_window_uia_automation_id),
+        foreground_window_uia_class_name=normalize_text(request.observation.foreground_window_uia_class_name),
+        foreground_window_uia_control_type=normalize_text(request.observation.foreground_window_uia_control_type),
+        foreground_window_uia_is_enabled=normalize_bool(request.observation.foreground_window_uia_is_enabled),
+        foreground_window_uia_child_count=normalize_int(request.observation.foreground_window_uia_child_count),
+        foreground_window_uia_child_summary=normalize_text(request.observation.foreground_window_uia_child_summary),
+        foreground_window_actionable_summary=normalized_actionable_summary,
         foreground_window_candidate_elements_json=json.dumps(
             [candidate.model_dump() for candidate in request.observation.foreground_window_candidate_elements],
             ensure_ascii=True,
         ),
-        screen_width=request.observation.screen_width,
-        screen_height=request.observation.screen_height,
-        screenshot_ref=request.observation.screenshot_ref,
+        screen_width=normalize_int(request.observation.screen_width),
+        screen_height=normalize_int(request.observation.screen_height),
+        screenshot_ref=normalize_text(request.observation.screenshot_ref),
         highlight_rect={
             "x": response.highlight.rect.x,
             "y": response.highlight.rect.y,
@@ -199,8 +212,8 @@ async def analyze(
         target_candidate_label=planner_result.target_candidate_label,
         last_planner_error_code=planner_result.planner_error_code,
         last_planner_error=planner_result.planner_error,
-        last_foreground_window_title=request.observation.foreground_window_title,
-        last_screenshot_ref=request.observation.screenshot_ref,
+        last_foreground_window_title=normalize_text(request.observation.foreground_window_title),
+        last_screenshot_ref=normalize_text(request.observation.screenshot_ref),
         last_updated_at_utc=created_at_utc,
     )
     log_store.insert_analyze_diagnostic(
@@ -232,7 +245,7 @@ async def analyze(
             feedback_type=None,
             planner_source=planner_result.planner_source,
             observation_quality=observation_quality,
-            screenshot_ref=request.observation.screenshot_ref,
+            screenshot_ref=normalize_text(request.observation.screenshot_ref),
             note="next_step_generated",
         )
     )
