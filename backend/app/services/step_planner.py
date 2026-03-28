@@ -518,7 +518,21 @@ class SettingsBluetoothScenarioPlanner(StepPlanner):
             )
             if value
         ).casefold()
-        return "设置" in combined_text or "systemsettings" in combined_text
+        if "设置" in combined_text or "systemsettings" in combined_text:
+            return True
+
+        # Settings sub-pages may not include "设置" in the current title.
+        settings_shell_signals = (
+            "蓝牙和其他设备",
+            "蓝牙和设备",
+            "network and internet",
+            "网络和internet",
+            "个性化",
+            "时间和语言",
+            "windows update",
+            "window_kind=settings",
+        )
+        return any(signal in combined_text for signal in settings_shell_signals)
 
     @staticmethod
     def _looks_like_bluetooth_page(
@@ -527,11 +541,16 @@ class SettingsBluetoothScenarioPlanner(StepPlanner):
         candidates: list[ObservationCandidateElementDto],
     ) -> bool:
         combined_text = f"{window_title} {actionable_summary}".casefold()
-        if "title=蓝牙和设备" in combined_text or "title=bluetooth" in combined_text:
+        if (
+            "title=蓝牙和设备" in combined_text
+            or "title=蓝牙和其他设备" in combined_text
+            or "title=bluetooth" in combined_text
+        ):
             return True
 
         bluetooth_page_signals = (
             "添加设备",
+            "蓝牙和其他设备",
             "bluetooth & devices",
             "bluetoothanddevices",
             "bluetoothsettings",
@@ -559,7 +578,11 @@ class SettingsBluetoothScenarioPlanner(StepPlanner):
                 for value in (candidate.name, candidate.automation_id, candidate.class_name)
                 if value
             ).casefold()
-            if "蓝牙和设备" in candidate_text or "bluetooth" in candidate_text:
+            if (
+                "蓝牙和设备" in candidate_text
+                or "蓝牙和其他设备" in candidate_text
+                or "bluetooth" in candidate_text
+            ):
                 if candidate.bounding_rect.width > 0 and candidate.bounding_rect.height > 0:
                     return candidate
         return None
