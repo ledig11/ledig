@@ -29,11 +29,20 @@ def get_runtime_model_config(
     x_api_key: Optional[str] = Header(default=None, alias="X-API-Key"),
     x_model_provider: Optional[str] = Header(default=None, alias="X-Model-Provider"),
     x_model_base_url: Optional[str] = Header(default=None, alias="X-Model-Base-Url"),
+    authorization: Optional[str] = Header(default=None, alias="Authorization"),
 ) -> RuntimeModelConfig:
+    bearer_token: Optional[str] = None
+    if authorization:
+        normalized = authorization.strip()
+        if normalized.lower().startswith("bearer "):
+            raw_token = normalized[7:].strip()
+            if raw_token:
+                bearer_token = raw_token
+
     return resolve_runtime_model_config(
         provider_header=x_model_provider,
         model_type_header=x_model_type,
-        api_key_header=x_api_key,
+        api_key_header=x_api_key or bearer_token,
         base_url_header=x_model_base_url,
     )
 

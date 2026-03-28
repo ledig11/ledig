@@ -21,7 +21,7 @@ Current analyze logging coverage:
 - The backend now supports a model-backed planner entry with safe fallback to the mock planner
 
 Runtime model configuration:
-- Request headers: `X-Model-Type`, `X-API-Key`
+- Request headers: `X-Model-Type`, `X-API-Key` (or `Authorization: Bearer <token>`)
 - Optional request headers: `X-Model-Provider`, `X-Model-Base-Url`
 - Optional env vars:
   - `WINDOWS_STEP_GUIDE_MODEL_PROVIDER` default: `openai`

@@ -42,6 +42,7 @@ Help users complete computer operations step by step, one step at a time.
 - WPF client startup now uses dependency injection for service wiring
 - WPF startup config now supports API Key as optional so local safe-fallback validation can proceed without external model access
 - WPF startup config now supports membership-token/API-Key auth mode plus provider/base-url/model selection for OpenAI-compatible switching
+- When auth mode is `member_token`, the client now sends `Authorization: Bearer <token>` to support token-based gateways
 - A minimal realtime channel is now available via WebSocket (`/api/ws/events`) with structured analyze/feedback events
 - Observation contract now carries visual-fallback metadata (`screenshot_status`, `screenshot_local_path`) in addition to `screenshot_ref`
 - Backend API layers now depend on a `LogStore` interface port for easier mock-friendly replacement

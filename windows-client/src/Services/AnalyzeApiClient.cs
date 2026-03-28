@@ -1,4 +1,5 @@
 using System.Net.Http;
+using System.Net.Http.Headers;
 using System.Net.Http.Json;
 using System.Linq;
 using System.Text.Json;
@@ -103,9 +104,21 @@ public sealed class AnalyzeApiClient : IAnalyzeApiClient
             httpRequest.Headers.Add("X-Model-Base-Url", _runtimeModelConfig.BaseUrl);
         }
 
+        if (!string.IsNullOrWhiteSpace(_runtimeModelConfig.AuthMode))
+        {
+            httpRequest.Headers.Add("X-Auth-Mode", _runtimeModelConfig.AuthMode);
+        }
+
         if (!string.IsNullOrWhiteSpace(_runtimeModelConfig.ApiKey))
         {
-            httpRequest.Headers.Add("X-API-Key", _runtimeModelConfig.ApiKey);
+            if (string.Equals(_runtimeModelConfig.AuthMode, "member_token", StringComparison.OrdinalIgnoreCase))
+            {
+                httpRequest.Headers.Authorization = new AuthenticationHeaderValue("Bearer", _runtimeModelConfig.ApiKey);
+            }
+            else
+            {
+                httpRequest.Headers.Add("X-API-Key", _runtimeModelConfig.ApiKey);
+            }
         }
 
         using HttpResponseMessage response = await _httpClient.SendAsync(httpRequest, cancellationToken);
