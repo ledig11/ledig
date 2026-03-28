@@ -1,0 +1,15 @@
+{
+  "session_id": "mock-session-15a29c69",
+  "step_id": "scenario-open-time-language-settings",
+  "instruction": "这是“打开设置并进入时间和语言页面”的场景。请先点击这个入口：ControlType.Button:时间和语言 (automation_id=SystemSettings_TimeLanguage, path=foreground-window/child[4])。",
+  "action_type": "open_time_language_settings",
+  "requires_user_action": true,
+  "highlight": {
+    "rect": {
+      "x": 44,
+      "y": 344,
+      "width": 156,
+      "height": 36
+    }
+  }
+}

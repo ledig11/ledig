@@ -16,6 +16,7 @@ from app.services.step_planner import (
     SettingsDisplayScenarioPlanner,
     SettingsNetworkScenarioPlanner,
     SettingsPersonalizationScenarioPlanner,
+    SettingsTimeLanguageScenarioPlanner,
     StepPlanner,
 )
 from app.storage.log_store import LogStore
@@ -123,11 +124,14 @@ def get_step_planner(
     runtime_model_config: RuntimeModelConfig = Depends(get_runtime_model_config),
     log_store: LogStorePort = Depends(get_log_store),
 ) -> StepPlanner:
-    fallback_planner = SettingsPersonalizationScenarioPlanner(
-        fallback_planner=SettingsDisplayScenarioPlanner(
-            fallback_planner=SettingsNetworkScenarioPlanner(
-                fallback_planner=SettingsBluetoothScenarioPlanner(
-                    fallback_planner=MockStepPlanner(),
+    fallback_planner = SettingsTimeLanguageScenarioPlanner(
+        fallback_planner=SettingsPersonalizationScenarioPlanner(
+            fallback_planner=SettingsDisplayScenarioPlanner(
+                fallback_planner=SettingsNetworkScenarioPlanner(
+                    fallback_planner=SettingsBluetoothScenarioPlanner(
+                        fallback_planner=MockStepPlanner(),
+                        session_state_reader=log_store.get_session_state,
+                    ),
                     session_state_reader=log_store.get_session_state,
                 ),
                 session_state_reader=log_store.get_session_state,

@@ -1221,6 +1221,236 @@ class SettingsPersonalizationScenarioPlanner(StepPlanner):
         return None
 
 
+class SettingsTimeLanguageScenarioPlanner(StepPlanner):
+    def __init__(
+        self,
+        fallback_planner: StepPlanner,
+        session_state_reader: Optional[Callable[[str], Optional[SessionStateEntry]]] = None,
+    ) -> None:
+        self._fallback_planner = fallback_planner
+        self._session_state_reader = session_state_reader
+
+    def analyze(self, request: AnalyzeRequest) -> StepPlannerResult:
+        if not self._is_settings_time_language_task(request.task_text):
+            return self._fallback_planner.analyze(request)
+
+        observation = request.observation
+        normalized_task_key = request.task_text.strip().casefold()
+        time_language_candidate = self._find_time_language_candidate(observation.foreground_window_candidate_elements)
+        session_state = self._read_session_state(observation.session_id)
+        on_settings_window = SettingsBluetoothScenarioPlanner._looks_like_settings_window(
+            observation.foreground_window_title,
+            observation.foreground_window_uia_name,
+            observation.foreground_window_uia_automation_id,
+            observation.foreground_window_uia_class_name,
+            observation.foreground_window_actionable_summary,
+        )
+        on_time_language_page = self._looks_like_time_language_page(
+            observation.foreground_window_title,
+            observation.foreground_window_actionable_summary,
+            observation.foreground_window_candidate_elements,
+        )
+
+        if (
+            session_state is not None
+            and session_state.last_feedback_type == "incorrect"
+            and session_state.current_action_type in {"open_time_language_settings", "recover_time_language_navigation"}
+            and on_settings_window
+            and not on_time_language_page
+        ):
+            response = NextStepResponse(
+                session_id=MockStepPlanner._build_session_id(normalized_task_key),
+                step_id="scenario-recover-time-language-navigation",
+                instruction=(
+                    "上一步进入“时间和语言”页面没有成功。"
+                    "请先确认仍在设置窗口导航区域，"
+                    + (
+                        f"然后重新点击这个入口：{MockStepPlanner._format_candidate_label(time_language_candidate)}。"
+                        if time_language_candidate is not None
+                        else "然后重新查找“时间和语言”入口后再继续。"
+                    )
+                ),
+                action_type="recover_time_language_navigation",
+                requires_user_action=True,
+                highlight=HighlightDto(
+                    rect=MockStepPlanner._build_highlight_rect(time_language_candidate)
+                ),
+            )
+            return StepPlannerResult(
+                response=response,
+                planner_source="scenario",
+                prompt_version="scenario-settings-time-language.v1",
+                response_schema_version="next-step-response.v1",
+                target_candidate_ui_path=time_language_candidate.ui_path if time_language_candidate is not None else None,
+                target_candidate_label=MockStepPlanner._format_candidate_label(time_language_candidate) if time_language_candidate is not None else None,
+            )
+
+        if not on_settings_window:
+            response = NextStepResponse(
+                session_id=MockStepPlanner._build_session_id(normalized_task_key),
+                step_id="scenario-open-settings-for-time-language",
+                instruction="这是“打开设置并进入时间和语言页面”的场景。请先打开 Windows 设置窗口，再继续下一步分析。",
+                action_type="open_settings_app",
+                requires_user_action=True,
+                highlight=HighlightDto(
+                    rect=MockStepPlanner._build_highlight_rect(None)
+                ),
+            )
+            return StepPlannerResult(
+                response=response,
+                planner_source="scenario",
+                prompt_version="scenario-settings-time-language.v1",
+                response_schema_version="next-step-response.v1",
+            )
+
+        if on_time_language_page:
+            response = NextStepResponse(
+                session_id=MockStepPlanner._build_session_id(normalized_task_key),
+                step_id="scenario-confirm-time-language-page",
+                instruction="你已经进入“时间和语言”相关页面。请确认目标设置（日期和时间、语言和区域、输入法等）后继续下一步操作。",
+                action_type="confirm_time_language_page",
+                requires_user_action=True,
+                highlight=HighlightDto(
+                    rect=MockStepPlanner._build_highlight_rect(time_language_candidate)
+                ),
+            )
+            return StepPlannerResult(
+                response=response,
+                planner_source="scenario",
+                prompt_version="scenario-settings-time-language.v1",
+                response_schema_version="next-step-response.v1",
+                target_candidate_ui_path=time_language_candidate.ui_path if time_language_candidate is not None else None,
+                target_candidate_label=MockStepPlanner._format_candidate_label(time_language_candidate) if time_language_candidate is not None else None,
+            )
+
+        if time_language_candidate is not None:
+            response = NextStepResponse(
+                session_id=MockStepPlanner._build_session_id(normalized_task_key),
+                step_id="scenario-open-time-language-settings",
+                instruction=(
+                    "这是“打开设置并进入时间和语言页面”的场景。"
+                    f"请先点击这个入口：{MockStepPlanner._format_candidate_label(time_language_candidate)}。"
+                ),
+                action_type="open_time_language_settings",
+                requires_user_action=True,
+                highlight=HighlightDto(
+                    rect=MockStepPlanner._build_highlight_rect(time_language_candidate)
+                ),
+            )
+            return StepPlannerResult(
+                response=response,
+                planner_source="scenario",
+                prompt_version="scenario-settings-time-language.v1",
+                response_schema_version="next-step-response.v1",
+                target_candidate_ui_path=time_language_candidate.ui_path,
+                target_candidate_label=MockStepPlanner._format_candidate_label(time_language_candidate),
+            )
+
+        response = NextStepResponse(
+            session_id=MockStepPlanner._build_session_id(normalized_task_key),
+            step_id="scenario-search-time-language-entry",
+            instruction="设置窗口已经打开，但当前还没有识别到“时间和语言”入口。请先在设置窗口中定位该入口后再继续分析。",
+            action_type="search_time_language_entry",
+            requires_user_action=True,
+            highlight=HighlightDto(
+                rect=MockStepPlanner._build_highlight_rect(None)
+            ),
+        )
+        return StepPlannerResult(
+            response=response,
+            planner_source="scenario",
+            prompt_version="scenario-settings-time-language.v1",
+            response_schema_version="next-step-response.v1",
+        )
+
+    def _read_session_state(self, session_id: Optional[str]) -> Optional[SessionStateEntry]:
+        if session_id is None or self._session_state_reader is None:
+            return None
+
+        try:
+            return self._session_state_reader(session_id)
+        except Exception:
+            return None
+
+    @staticmethod
+    def _is_settings_time_language_task(task_text: str) -> bool:
+        normalized = task_text.casefold().replace(" ", "")
+        contains_settings = "设置" in normalized or "settings" in normalized
+        contains_time_language = any(
+            keyword in normalized
+            for keyword in ("时间和语言", "时间", "语言", "time", "language", "日期", "region")
+        )
+        return contains_settings and contains_time_language
+
+    @staticmethod
+    def _looks_like_time_language_page(
+        window_title: str,
+        actionable_summary: str,
+        candidates: list[ObservationCandidateElementDto],
+    ) -> bool:
+        combined_text = f"{window_title} {actionable_summary}".casefold()
+        if any(
+            keyword in combined_text
+            for keyword in (
+                "title=时间和语言",
+                "title=time&language",
+                "title=time and language",
+                "title=time-language",
+            )
+        ):
+            return True
+
+        page_signals = (
+            "日期和时间",
+            "date & time",
+            "dateandtime",
+            "语言和区域",
+            "language & region",
+            "languageandregion",
+            "输入",
+            "typing",
+            "语音",
+            "speech",
+        )
+        for candidate in candidates:
+            candidate_text = " ".join(
+                value
+                for value in (candidate.name, candidate.automation_id, candidate.class_name)
+                if value
+            ).casefold()
+            compact_text = candidate_text.replace(" ", "")
+            if any(signal in candidate_text or signal in compact_text for signal in page_signals):
+                return True
+
+        return False
+
+    @staticmethod
+    def _find_time_language_candidate(
+        candidates: list[ObservationCandidateElementDto],
+    ) -> Optional[ObservationCandidateElementDto]:
+        for candidate in candidates:
+            candidate_text = " ".join(
+                value
+                for value in (candidate.name, candidate.automation_id, candidate.class_name)
+                if value
+            ).casefold()
+            compact_text = candidate_text.replace(" ", "")
+            if any(
+                keyword in compact_text
+                for keyword in (
+                    "时间和语言",
+                    "timeandlanguage",
+                    "time&language",
+                    "systemsettings_timelanguage",
+                    "dateandtime",
+                    "languageandregion",
+                )
+            ):
+                if candidate.bounding_rect.width > 0 and candidate.bounding_rect.height > 0:
+                    return candidate
+        return None
+
+
 class ModelStepPlanner(StepPlanner):
     _ACTION_TYPE_PATTERN = re.compile(r"^[a-z][a-z0-9_]{1,63}$")
     _DISALLOWED_ACTION_TYPE_TERMS = (

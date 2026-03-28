@@ -29,6 +29,7 @@ Help users complete computer operations step by step, one step at a time.
 - The Settings -> Network scenario now also supports session-aware recovery after incorrect feedback
 - A third dedicated Windows Settings -> Display scenario is now supported, including incorrect-feedback recovery
 - A fourth dedicated Windows Settings -> Personalization scenario is now supported, including incorrect-feedback recovery
+- A fifth dedicated Windows Settings -> Time & Language scenario is now supported, including incorrect-feedback recovery
 - Analyze diagnostics now include observation-quality fields (candidate count, scanned nodes, scan depth, quality level)
 - Observation metrics now also use strongly typed request fields (`foreground_window_candidate_count`, `foreground_window_scan_node_count`, `foreground_window_scan_depth`)
 - A diagnostic timeline debug view is now available to correlate planner diagnostics with observation records

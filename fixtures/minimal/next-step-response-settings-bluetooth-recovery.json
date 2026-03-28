@@ -1,0 +1,15 @@
+{
+  "session_id": "mock-session-9afb7a66",
+  "step_id": "scenario-recover-bluetooth-navigation",
+  "instruction": "上一步进入“蓝牙和设备”没有成功。请先确认当前仍在设置窗口左侧导航区域，然后重新点击这个入口：ControlType.Button:蓝牙和设备 (automation_id=SystemSettings_Bluetooth, path=foreground-window/child[1])。",
+  "action_type": "recover_bluetooth_navigation",
+  "requires_user_action": true,
+  "highlight": {
+    "rect": {
+      "x": 44,
+      "y": 224,
+      "width": 160,
+      "height": 36
+    }
+  }
+}

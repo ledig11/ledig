@@ -1,0 +1,15 @@
+{
+  "session_id": "mock-session-15a29c69",
+  "step_id": "scenario-confirm-time-language-page",
+  "instruction": "你已经进入“时间和语言”相关页面。请确认目标设置（日期和时间、语言和区域、输入法等）后继续下一步操作。",
+  "action_type": "confirm_time_language_page",
+  "requires_user_action": true,
+  "highlight": {
+    "rect": {
+      "x": 420,
+      "y": 276,
+      "width": 152,
+      "height": 34
+    }
+  }
+}

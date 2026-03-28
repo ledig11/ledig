@@ -1,0 +1,38 @@
+{
+  "task_text": "打开设置并进入时间和语言页面",
+  "observation": {
+    "session_id": null,
+    "captured_at_utc": "2026-03-28T01:00:00Z",
+    "foreground_window_title": "设置",
+    "foreground_window_uia_name": "设置",
+    "foreground_window_uia_automation_id": "SystemSettings",
+    "foreground_window_uia_class_name": "ApplicationFrameWindow",
+    "foreground_window_uia_control_type": "ControlType.Window",
+    "foreground_window_uia_is_enabled": true,
+    "foreground_window_uia_child_count": 6,
+    "foreground_window_uia_child_summary": "ControlType.Button:系统 | ControlType.Button:蓝牙和设备 | ControlType.Button:网络和 Internet | ControlType.Button:个性化 | ControlType.Button:时间和语言 | ControlType.Button:应用",
+    "foreground_window_actionable_summary": "window_kind=settings; title=设置; control_type=ControlType.Window; child_count=6; candidate_count=6; scanned_nodes=160; scan_depth=4; child_summary=ControlType.Button:系统 | ControlType.Button:蓝牙和设备 | ControlType.Button:网络和 Internet | ControlType.Button:个性化 | ControlType.Button:时间和语言 | ControlType.Button:应用",
+    "foreground_window_candidate_elements": [
+      {
+        "name": "时间和语言",
+        "automation_id": "SystemSettings_TimeLanguage",
+        "class_name": "NavigationViewItem",
+        "control_type": "ControlType.Button",
+        "is_enabled": true,
+        "is_offscreen": false,
+        "is_keyboard_focusable": true,
+        "has_keyboard_focus": true,
+        "ui_path": "foreground-window/child[4]",
+        "bounding_rect": {
+          "x": 44,
+          "y": 344,
+          "width": 156,
+          "height": 36
+        }
+      }
+    ],
+    "screen_width": 1280,
+    "screen_height": 720,
+    "screenshot_ref": "local://observation/20260328/010000/5f1d9c41"
+  }
+}

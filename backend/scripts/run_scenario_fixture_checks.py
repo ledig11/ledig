@@ -21,6 +21,7 @@ from app.services.step_planner import (
     SettingsDisplayScenarioPlanner,
     SettingsNetworkScenarioPlanner,
     SettingsPersonalizationScenarioPlanner,
+    SettingsTimeLanguageScenarioPlanner,
 )
 
 
@@ -46,11 +47,14 @@ class CaseResult:
 
 
 def build_planner(session_state_reader=None):
-    return SettingsPersonalizationScenarioPlanner(
-        fallback_planner=SettingsDisplayScenarioPlanner(
-            fallback_planner=SettingsNetworkScenarioPlanner(
-                fallback_planner=SettingsBluetoothScenarioPlanner(
-                    fallback_planner=MockStepPlanner(),
+    return SettingsTimeLanguageScenarioPlanner(
+        fallback_planner=SettingsPersonalizationScenarioPlanner(
+            fallback_planner=SettingsDisplayScenarioPlanner(
+                fallback_planner=SettingsNetworkScenarioPlanner(
+                    fallback_planner=SettingsBluetoothScenarioPlanner(
+                        fallback_planner=MockStepPlanner(),
+                        session_state_reader=session_state_reader,
+                    ),
                     session_state_reader=session_state_reader,
                 ),
                 session_state_reader=session_state_reader,
@@ -155,6 +159,8 @@ def infer_scenario_name(request_file: str) -> str:
         return "display"
     if "personalization" in normalized:
         return "personalization"
+    if "time-language" in normalized or ("time" in normalized and "language" in normalized):
+        return "time-language"
     return "general"
 
 
@@ -302,7 +308,7 @@ def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Run scenario fixture regression checks.")
     parser.add_argument(
         "--scenario",
-        choices=["bluetooth", "network", "display", "personalization", "all"],
+        choices=["bluetooth", "network", "display", "personalization", "time-language", "all"],
         default="all",
         help="Run only one scenario group.",
     )
@@ -391,6 +397,19 @@ def main() -> None:
             expected_response_file="next-step-response-settings-personalization-page.json",
         ),
         FixtureCase(
+            request_file="analyze-request-settings-time-language.json",
+            expected_response_file="next-step-response-settings-time-language.json",
+        ),
+        FixtureCase(
+            request_file="analyze-request-settings-time-language-page.json",
+            expected_response_file="next-step-response-settings-time-language-page.json",
+        ),
+        FixtureCase(
+            request_file="analyze-request-settings-bluetooth-recovery.json",
+            expected_response_file="next-step-response-settings-bluetooth-recovery.json",
+            incorrect_recovery_parent_action_type="open_bluetooth_settings",
+        ),
+        FixtureCase(
             request_file="analyze-request-settings-network-recovery.json",
             expected_response_file="next-step-response-settings-network-recovery.json",
             incorrect_recovery_parent_action_type="open_network_settings",
@@ -404,6 +423,11 @@ def main() -> None:
             request_file="analyze-request-settings-personalization-recovery.json",
             expected_response_file="next-step-response-settings-personalization-recovery.json",
             incorrect_recovery_parent_action_type="open_personalization_settings",
+        ),
+        FixtureCase(
+            request_file="analyze-request-settings-time-language-recovery.json",
+            expected_response_file="next-step-response-settings-time-language-recovery.json",
+            incorrect_recovery_parent_action_type="open_time_language_settings",
         ),
     ]
 

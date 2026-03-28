@@ -1,0 +1,15 @@
+{
+  "session_id": "mock-session-15a29c69",
+  "step_id": "scenario-recover-time-language-navigation",
+  "instruction": "上一步进入“时间和语言”页面没有成功。请先确认仍在设置窗口导航区域，然后重新点击这个入口：ControlType.Button:时间和语言 (automation_id=SystemSettings_TimeLanguage, path=foreground-window/child[4])。",
+  "action_type": "recover_time_language_navigation",
+  "requires_user_action": true,
+  "highlight": {
+    "rect": {
+      "x": 44,
+      "y": 344,
+      "width": 156,
+      "height": 36
+    }
+  }
+}
