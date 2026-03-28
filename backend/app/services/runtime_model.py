@@ -19,10 +19,16 @@ class RuntimeModelConfig:
 
 
 def resolve_runtime_model_config(
+    provider_header: Optional[str],
     model_type_header: Optional[str],
     api_key_header: Optional[str],
+    base_url_header: Optional[str],
 ) -> RuntimeModelConfig:
-    provider = os.getenv("WINDOWS_STEP_GUIDE_MODEL_PROVIDER", "openai").strip() or "openai"
+    provider = (
+        (provider_header or "").strip()
+        or os.getenv("WINDOWS_STEP_GUIDE_MODEL_PROVIDER", "").strip()
+        or "openai"
+    )
     model_type = (
         (model_type_header or "").strip()
         or os.getenv("WINDOWS_STEP_GUIDE_MODEL_TYPE", "").strip()
@@ -34,6 +40,8 @@ def resolve_runtime_model_config(
         or None
     )
     base_url = (
+        (base_url_header or "").strip()
+        or
         os.getenv("WINDOWS_STEP_GUIDE_MODEL_BASE_URL", "").strip()
         or "https://api.openai.com/v1/responses"
     )

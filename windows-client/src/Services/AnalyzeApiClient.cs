@@ -93,6 +93,16 @@ public sealed class AnalyzeApiClient : IAnalyzeApiClient
             httpRequest.Headers.Add("X-Model-Type", _runtimeModelConfig.ModelType);
         }
 
+        if (!string.IsNullOrWhiteSpace(_runtimeModelConfig.Provider))
+        {
+            httpRequest.Headers.Add("X-Model-Provider", _runtimeModelConfig.Provider);
+        }
+
+        if (!string.IsNullOrWhiteSpace(_runtimeModelConfig.BaseUrl))
+        {
+            httpRequest.Headers.Add("X-Model-Base-Url", _runtimeModelConfig.BaseUrl);
+        }
+
         if (!string.IsNullOrWhiteSpace(_runtimeModelConfig.ApiKey))
         {
             httpRequest.Headers.Add("X-API-Key", _runtimeModelConfig.ApiKey);

@@ -22,6 +22,7 @@ Current analyze logging coverage:
 
 Runtime model configuration:
 - Request headers: `X-Model-Type`, `X-API-Key`
+- Optional request headers: `X-Model-Provider`, `X-Model-Base-Url`
 - Optional env vars:
   - `WINDOWS_STEP_GUIDE_MODEL_PROVIDER` default: `openai`
   - `WINDOWS_STEP_GUIDE_MODEL_TYPE` default: `gpt-4.1`

@@ -55,37 +55,12 @@ class OpenAIResponsesGateway(ModelGateway):
                 code="model_access_not_configured",
             )
 
-        payload = {
-            "model": runtime_model_config.model_type,
-            "input": [
-                {
-                    "role": "system",
-                    "content": [
-                        {
-                            "type": "input_text",
-                            "text": prompt_bundle.system_prompt,
-                        }
-                    ],
-                },
-                {
-                    "role": "user",
-                    "content": [
-                        {
-                            "type": "input_text",
-                            "text": prompt_bundle.user_prompt,
-                        }
-                    ],
-                },
-            ],
-            "text": {
-                "format": {
-                    "type": "json_schema",
-                    "name": "next_step_response",
-                    "strict": True,
-                    "schema": self._response_schema,
-                }
-            },
-        }
+        use_responses_api = self._is_responses_endpoint(runtime_model_config.base_url)
+        payload = self._build_request_payload(
+            prompt_bundle=prompt_bundle,
+            model_type=runtime_model_config.model_type,
+            use_responses_api=use_responses_api,
+        )
 
         request_body = json.dumps(payload).encode("utf-8")
         http_request = request.Request(
@@ -123,7 +98,7 @@ class OpenAIResponsesGateway(ModelGateway):
                 raw_response_excerpt=self._build_excerpt(raw_payload),
             ) from exc
 
-        json_text = self._extract_output_text(parsed_payload)
+        json_text = self._extract_output_text(parsed_payload, use_responses_api=use_responses_api)
         try:
             return json.loads(json_text)
         except json.JSONDecodeError as exc:
@@ -138,7 +113,10 @@ class OpenAIResponsesGateway(ModelGateway):
         return json.loads(NEXT_STEP_SCHEMA_PATH.read_text(encoding="utf-8"))
 
     @staticmethod
-    def _extract_output_text(payload: dict[str, Any]) -> str:
+    def _extract_output_text(payload: dict[str, Any], *, use_responses_api: bool) -> str:
+        if not use_responses_api:
+            return OpenAIResponsesGateway._extract_chat_completions_text(payload)
+
         output_text = payload.get("output_text")
         if isinstance(output_text, str) and output_text.strip():
             return output_text
@@ -165,8 +143,105 @@ class OpenAIResponsesGateway(ModelGateway):
         )
 
     @staticmethod
+    def _extract_chat_completions_text(payload: dict[str, Any]) -> str:
+        choices = payload.get("choices")
+        if not isinstance(choices, list) or not choices:
+            raise ModelGatewayError(
+                "model response did not include choices",
+                code="missing_output_text",
+                raw_response_excerpt=OpenAIResponsesGateway._build_excerpt(json.dumps(payload, ensure_ascii=False)),
+            )
+
+        first_choice = choices[0]
+        if not isinstance(first_choice, dict):
+            raise ModelGatewayError(
+                "model response choice is invalid",
+                code="missing_output_text",
+                raw_response_excerpt=OpenAIResponsesGateway._build_excerpt(json.dumps(payload, ensure_ascii=False)),
+            )
+
+        message = first_choice.get("message")
+        if not isinstance(message, dict):
+            raise ModelGatewayError(
+                "model response did not include message",
+                code="missing_output_text",
+                raw_response_excerpt=OpenAIResponsesGateway._build_excerpt(json.dumps(payload, ensure_ascii=False)),
+            )
+
+        content = message.get("content")
+        if isinstance(content, str) and content.strip():
+            return content
+
+        if isinstance(content, list):
+            for item in content:
+                if not isinstance(item, dict):
+                    continue
+                text = item.get("text")
+                if isinstance(text, str) and text.strip():
+                    return text
+
+        raise ModelGatewayError(
+            "model response did not include message content",
+            code="missing_output_text",
+            raw_response_excerpt=OpenAIResponsesGateway._build_excerpt(json.dumps(payload, ensure_ascii=False)),
+        )
+
+    @staticmethod
     def _build_excerpt(raw_text: str, limit: int = 500) -> str:
         compact_text = " ".join(raw_text.split())
         if len(compact_text) <= limit:
             return compact_text
         return f"{compact_text[:limit]}..."
+    @staticmethod
+    def _is_responses_endpoint(base_url: str) -> bool:
+        normalized = base_url.strip().lower()
+        return normalized.endswith("/responses")
+
+    def _build_request_payload(
+        self,
+        *,
+        prompt_bundle: PromptBundle,
+        model_type: str,
+        use_responses_api: bool,
+    ) -> dict[str, Any]:
+        if use_responses_api:
+            return {
+                "model": model_type,
+                "input": [
+                    {
+                        "role": "system",
+                        "content": [
+                            {
+                                "type": "input_text",
+                                "text": prompt_bundle.system_prompt,
+                            }
+                        ],
+                    },
+                    {
+                        "role": "user",
+                        "content": [
+                            {
+                                "type": "input_text",
+                                "text": prompt_bundle.user_prompt,
+                            }
+                        ],
+                    },
+                ],
+                "text": {
+                    "format": {
+                        "type": "json_schema",
+                        "name": "next_step_response",
+                        "strict": True,
+                        "schema": self._response_schema,
+                    }
+                },
+            }
+
+        return {
+            "model": model_type,
+            "messages": [
+                {"role": "system", "content": prompt_bundle.system_prompt},
+                {"role": "user", "content": prompt_bundle.user_prompt},
+            ],
+            "response_format": {"type": "json_object"},
+        }

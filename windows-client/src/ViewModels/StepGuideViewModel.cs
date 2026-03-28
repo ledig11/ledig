@@ -56,7 +56,7 @@ public sealed class StepGuideViewModel : INotifyPropertyChanged
         _observationManifestStore = observationManifestStore;
         _runtimeModelConfig = runtimeModelConfig;
         _runtimeModelSummary =
-            $"model_type={_runtimeModelConfig.ModelType}\napi_key={_runtimeModelConfig.GetMaskedApiKey()}";
+            $"provider={_runtimeModelConfig.Provider}\nbase_url={_runtimeModelConfig.BaseUrl}\nauth_mode={_runtimeModelConfig.AuthMode}\nmodel_type={_runtimeModelConfig.ModelType}\ncredential={_runtimeModelConfig.GetMaskedApiKey()}";
     }
 
     public event PropertyChangedEventHandler? PropertyChanged;

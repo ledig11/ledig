@@ -27,10 +27,14 @@ router = APIRouter()
 def get_runtime_model_config(
     x_model_type: Optional[str] = Header(default=None, alias="X-Model-Type"),
     x_api_key: Optional[str] = Header(default=None, alias="X-API-Key"),
+    x_model_provider: Optional[str] = Header(default=None, alias="X-Model-Provider"),
+    x_model_base_url: Optional[str] = Header(default=None, alias="X-Model-Base-Url"),
 ) -> RuntimeModelConfig:
     return resolve_runtime_model_config(
+        provider_header=x_model_provider,
         model_type_header=x_model_type,
         api_key_header=x_api_key,
+        base_url_header=x_model_base_url,
     )
 
 
@@ -123,7 +127,7 @@ def get_step_planner(
         ),
         session_state_reader=log_store.get_session_state,
     )
-    if runtime_model_config.provider != "openai":
+    if runtime_model_config.provider not in {"openai", "openai_compatible"}:
         return fallback_planner
 
     return ModelStepPlanner(
