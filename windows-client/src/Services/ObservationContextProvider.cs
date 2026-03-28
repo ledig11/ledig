@@ -12,11 +12,13 @@ public interface IObservationContextProvider
 
 public sealed class ObservationContextProvider : IObservationContextProvider
 {
+    private const string GuideWindowTitle = "Windows Step Guide";
     private const string FallbackForegroundWindowTitle = "unknown-foreground-window";
     private const int FallbackScreenWidth = 1280;
     private const int FallbackScreenHeight = 720;
     private const string FallbackScreenshotRef = "local://observation/fallback";
     private readonly IForegroundWindowAutomationProvider _foregroundWindowAutomationProvider;
+    private ForegroundWindowObservationCache? _lastMeaningfulObservation;
 
     public ObservationContextProvider(IForegroundWindowAutomationProvider foregroundWindowAutomationProvider)
     {
@@ -27,33 +29,80 @@ public sealed class ObservationContextProvider : IObservationContextProvider
     {
         string capturedAtUtc = DateTime.UtcNow.ToString("O");
         (int screenWidth, int screenHeight) = GetScreenSize();
+        string foregroundWindowTitle = GetForegroundWindowTitle();
         ForegroundWindowAutomationSnapshot automationSnapshot = _foregroundWindowAutomationProvider.Capture();
+        (string effectiveTitle, ForegroundWindowAutomationSnapshot effectiveSnapshot) =
+            ResolveEffectiveObservationWindow(foregroundWindowTitle, automationSnapshot);
 
         return new ObservationDto
         {
             SessionId = sessionId,
             CapturedAtUtc = capturedAtUtc,
-            ForegroundWindowTitle = GetForegroundWindowTitle(),
-            ForegroundWindowUiaName = automationSnapshot.Name,
-            ForegroundWindowUiaAutomationId = automationSnapshot.AutomationId,
-            ForegroundWindowUiaClassName = automationSnapshot.ClassName,
-            ForegroundWindowUiaControlType = automationSnapshot.ControlType,
-            ForegroundWindowUiaIsEnabled = automationSnapshot.IsEnabled,
-            ForegroundWindowUiaChildCount = automationSnapshot.ChildCount,
-            ForegroundWindowUiaChildSummary = automationSnapshot.ChildSummary,
+            ForegroundWindowTitle = effectiveTitle,
+            ForegroundWindowUiaName = effectiveSnapshot.Name,
+            ForegroundWindowUiaAutomationId = effectiveSnapshot.AutomationId,
+            ForegroundWindowUiaClassName = effectiveSnapshot.ClassName,
+            ForegroundWindowUiaControlType = effectiveSnapshot.ControlType,
+            ForegroundWindowUiaIsEnabled = effectiveSnapshot.IsEnabled,
+            ForegroundWindowUiaChildCount = effectiveSnapshot.ChildCount,
+            ForegroundWindowUiaChildSummary = effectiveSnapshot.ChildSummary,
             ForegroundWindowActionableSummary = BuildActionableSummary(
-                GetForegroundWindowTitle(),
-                automationSnapshot),
-            ForegroundWindowCandidateCount = automationSnapshot.CandidateElements.Count,
-            ForegroundWindowScanNodeCount = automationSnapshot.ScannedNodeCount,
-            ForegroundWindowScanDepth = automationSnapshot.MaxDepthReached,
-            ForegroundWindowCandidateElements = automationSnapshot.CandidateElements,
+                effectiveTitle,
+                effectiveSnapshot),
+            ForegroundWindowCandidateCount = effectiveSnapshot.CandidateElements.Count,
+            ForegroundWindowScanNodeCount = effectiveSnapshot.ScannedNodeCount,
+            ForegroundWindowScanDepth = effectiveSnapshot.MaxDepthReached,
+            ForegroundWindowCandidateElements = effectiveSnapshot.CandidateElements,
             ScreenWidth = screenWidth,
             ScreenHeight = screenHeight,
             ScreenshotRef = GenerateScreenshotRef(capturedAtUtc),
             ScreenshotStatus = "not_captured_yet",
             ScreenshotLocalPath = null,
         };
+    }
+
+    private (string Title, ForegroundWindowAutomationSnapshot Snapshot) ResolveEffectiveObservationWindow(
+        string foregroundWindowTitle,
+        ForegroundWindowAutomationSnapshot automationSnapshot)
+    {
+        if (LooksLikeGuideOrDesktopWindow(foregroundWindowTitle, automationSnapshot))
+        {
+            if (_lastMeaningfulObservation is not null)
+            {
+                return (_lastMeaningfulObservation.Title, _lastMeaningfulObservation.Snapshot);
+            }
+            return (foregroundWindowTitle, automationSnapshot);
+        }
+
+        _lastMeaningfulObservation = new ForegroundWindowObservationCache(
+            foregroundWindowTitle,
+            automationSnapshot);
+        return (foregroundWindowTitle, automationSnapshot);
+    }
+
+    private static bool LooksLikeGuideOrDesktopWindow(
+        string foregroundWindowTitle,
+        ForegroundWindowAutomationSnapshot automationSnapshot)
+    {
+        if (foregroundWindowTitle.Contains(GuideWindowTitle, StringComparison.OrdinalIgnoreCase))
+        {
+            return true;
+        }
+
+        string className = automationSnapshot.ClassName;
+        if (className.Equals("Progman", StringComparison.OrdinalIgnoreCase)
+            || className.Equals("WorkerW", StringComparison.OrdinalIgnoreCase)
+            || className.Equals("Shell_TrayWnd", StringComparison.OrdinalIgnoreCase))
+        {
+            return true;
+        }
+
+        string normalizedTitle = foregroundWindowTitle.Trim();
+        string normalizedControlType = automationSnapshot.ControlType.Trim();
+        return normalizedControlType.Equals("ControlType.Pane", StringComparison.OrdinalIgnoreCase)
+               && (string.IsNullOrWhiteSpace(normalizedTitle)
+                   || normalizedTitle.Equals("Program Manager", StringComparison.OrdinalIgnoreCase)
+                   || normalizedTitle.Equals(FallbackForegroundWindowTitle, StringComparison.OrdinalIgnoreCase));
     }
 
     private static string BuildActionableSummary(
@@ -167,4 +216,8 @@ public sealed class ObservationContextProvider : IObservationContextProvider
 
     [DllImport("user32.dll", CharSet = CharSet.Unicode)]
     private static extern int GetWindowText(nint windowHandle, StringBuilder text, int maxCount);
+
+    private sealed record ForegroundWindowObservationCache(
+        string Title,
+        ForegroundWindowAutomationSnapshot Snapshot);
 }

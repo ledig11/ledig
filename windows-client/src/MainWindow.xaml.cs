@@ -75,25 +75,7 @@ public partial class MainWindow : Window
     {
         _overlayWindow.HideHighlight();
         _viewModel.MarkAnalysisStarted();
-        bool shouldRestoreWindow = IsVisible;
-        try
-        {
-            if (shouldRestoreWindow)
-            {
-                // Release foreground focus so observation capture can target the user's working window.
-                Hide();
-                await Task.Delay(120);
-            }
-
-            await _viewModel.AnalyzeAsync();
-        }
-        finally
-        {
-            if (shouldRestoreWindow && !IsVisible)
-            {
-                Show();
-            }
-        }
+        await _viewModel.AnalyzeAsync();
 
         if (_viewModel.HasHighlight)
         {
