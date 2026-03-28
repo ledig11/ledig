@@ -111,13 +111,36 @@ public sealed class AnalyzeApiClient : IAnalyzeApiClient
 
         if (!string.IsNullOrWhiteSpace(_runtimeModelConfig.ApiKey))
         {
+            string credential = _runtimeModelConfig.ApiKey.Trim();
             if (string.Equals(_runtimeModelConfig.AuthMode, "member_token", StringComparison.OrdinalIgnoreCase))
             {
-                httpRequest.Headers.Authorization = new AuthenticationHeaderValue("Bearer", _runtimeModelConfig.ApiKey);
+                try
+                {
+                    httpRequest.Headers.Authorization = new AuthenticationHeaderValue("Bearer", credential);
+                }
+                catch (FormatException)
+                {
+                    // Keep analyze flow non-blocking when user input token format is invalid.
+                }
+                catch (ArgumentException)
+                {
+                    // Keep analyze flow non-blocking when user input token format is invalid.
+                }
             }
             else
             {
-                httpRequest.Headers.Add("X-API-Key", _runtimeModelConfig.ApiKey);
+                try
+                {
+                    httpRequest.Headers.Add("X-API-Key", credential);
+                }
+                catch (FormatException)
+                {
+                    // Keep analyze flow non-blocking when user input key format is invalid.
+                }
+                catch (ArgumentException)
+                {
+                    // Keep analyze flow non-blocking when user input key format is invalid.
+                }
             }
         }
 

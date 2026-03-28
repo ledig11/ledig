@@ -13,6 +13,8 @@ namespace WindowsStepGuide.Client
         {
             base.OnStartup(e);
 
+            // Keep the app alive while the startup dialog is the only open window.
+            ShutdownMode = ShutdownMode.OnExplicitShutdown;
             var configWindow = new StartupConfigWindow();
             bool? configAccepted = configWindow.ShowDialog();
             if (configAccepted != true || configWindow.RuntimeModelConfig is null)
@@ -21,10 +23,24 @@ namespace WindowsStepGuide.Client
                 return;
             }
 
-            RuntimeModelConfig runtimeModelConfig = configWindow.RuntimeModelConfig;
-            _serviceProvider = BuildServiceProvider(runtimeModelConfig);
-            var window = _serviceProvider.GetRequiredService<MainWindow>();
-            window.Show();
+            try
+            {
+                RuntimeModelConfig runtimeModelConfig = configWindow.RuntimeModelConfig;
+                _serviceProvider = BuildServiceProvider(runtimeModelConfig);
+                var window = _serviceProvider.GetRequiredService<MainWindow>();
+                MainWindow = window;
+                ShutdownMode = ShutdownMode.OnMainWindowClose;
+                window.Show();
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show(
+                    $"启动主窗口失败：{ex.Message}",
+                    "Windows Step Guide",
+                    MessageBoxButton.OK,
+                    MessageBoxImage.Error);
+                Shutdown();
+            }
         }
 
         protected override void OnExit(ExitEventArgs e)
