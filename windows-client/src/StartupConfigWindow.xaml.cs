@@ -106,7 +106,7 @@ public partial class StartupConfigWindow : Window
         }
     }
 
-    private static string GetSelectedTag(ComboBox comboBox, string fallback)
+    private static string GetSelectedTag(System.Windows.Controls.ComboBox comboBox, string fallback)
     {
         if (comboBox.SelectedItem is ComboBoxItem selectedItem)
         {
