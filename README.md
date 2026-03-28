@@ -40,6 +40,7 @@ Help users complete computer operations step by step, one step at a time.
 - A QA checklist now documents the required regression/debug verification flow
 - A one-page runbook now provides unified local validation and troubleshooting flow
 - WPF client startup now uses dependency injection for service wiring
+- WPF startup config now supports API Key as optional so local safe-fallback validation can proceed without external model access
 - A minimal realtime channel is now available via WebSocket (`/api/ws/events`) with structured analyze/feedback events
 - Observation contract now carries visual-fallback metadata (`screenshot_status`, `screenshot_local_path`) in addition to `screenshot_ref`
 - Backend API layers now depend on a `LogStore` interface port for easier mock-friendly replacement

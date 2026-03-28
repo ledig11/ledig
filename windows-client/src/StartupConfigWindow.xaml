@@ -14,7 +14,7 @@
                        FontSize="18"
                        FontWeight="SemiBold"
                        Margin="0,0,0,8" />
-            <TextBlock Text="请输入本次运行要使用的大模型类型和 API Key。"
+            <TextBlock Text="请输入本次运行要使用的大模型类型。API Key 可选（留空将走本地安全回退）。"
                        Foreground="#FF666666"
                        TextWrapping="Wrap" />
             <TextBlock Text="模型类型"
@@ -22,7 +22,7 @@
                        Margin="0,16,0,6" />
             <TextBox x:Name="ModelTypeTextBox"
                      Margin="0,0,0,8" />
-            <TextBlock Text="API Key"
+            <TextBlock Text="API Key（可选）"
                        FontWeight="Bold"
                        Margin="0,8,0,6" />
             <PasswordBox x:Name="ApiKeyPasswordBox" />

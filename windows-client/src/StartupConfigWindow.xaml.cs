@@ -18,9 +18,9 @@ public partial class StartupConfigWindow : Window
         string modelType = ModelTypeTextBox.Text.Trim();
         string apiKey = ApiKeyPasswordBox.Password.Trim();
 
-        if (string.IsNullOrWhiteSpace(modelType) || string.IsNullOrWhiteSpace(apiKey))
+        if (string.IsNullOrWhiteSpace(modelType))
         {
-            ValidationTextBlock.Text = "模型类型和 API Key 都必须由人工手动输入后才能继续。";
+            ValidationTextBlock.Text = "模型类型不能为空。";
             return;
         }
 

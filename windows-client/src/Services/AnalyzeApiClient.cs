@@ -88,8 +88,15 @@ public sealed class AnalyzeApiClient : IAnalyzeApiClient
                 },
                 options: JsonOptions),
         };
-        httpRequest.Headers.Add("X-Model-Type", _runtimeModelConfig.ModelType);
-        httpRequest.Headers.Add("X-API-Key", _runtimeModelConfig.ApiKey);
+        if (!string.IsNullOrWhiteSpace(_runtimeModelConfig.ModelType))
+        {
+            httpRequest.Headers.Add("X-Model-Type", _runtimeModelConfig.ModelType);
+        }
+
+        if (!string.IsNullOrWhiteSpace(_runtimeModelConfig.ApiKey))
+        {
+            httpRequest.Headers.Add("X-API-Key", _runtimeModelConfig.ApiKey);
+        }
 
         using HttpResponseMessage response = await _httpClient.SendAsync(httpRequest, cancellationToken);
         if (!response.IsSuccessStatusCode)
