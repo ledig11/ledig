@@ -31,7 +31,7 @@ public sealed class ForegroundWindowAutomationProvider : IForegroundWindowAutoma
                 return ForegroundWindowAutomationSnapshot.Fallback();
             }
 
-            AutomationElementInformation current = element.Current;
+            var current = element.Current;
             return new ForegroundWindowAutomationSnapshot
             {
                 Name = Normalize(current.Name, "unknown-uia-name"),
@@ -83,7 +83,7 @@ public sealed class ForegroundWindowAutomationProvider : IForegroundWindowAutoma
             int maxChildren = Math.Min(children.Count, 5);
             for (int index = 0; index < maxChildren; index++)
             {
-                AutomationElementInformation child = children[index].Current;
+                var child = children[index].Current;
                 string controlType = child.ControlType?.ProgrammaticName ?? "unknown-control-type";
                 string name = Normalize(child.Name, "unnamed-child");
                 childParts.Add($"{controlType}:{name}");
@@ -145,7 +145,7 @@ public sealed class ForegroundWindowAutomationProvider : IForegroundWindowAutoma
                     int childDepth = currentItem.Depth + 1;
                     queue.Enqueue(new TraversalItem(child, childPath, childDepth));
 
-                    if (!TryCreateCandidate(child, childPath, out ObservationCandidateElementDto? candidate, out int score))
+                    if (!TryCreateCandidate(child, childPath, out ObservationCandidateElementDto candidate, out int score))
                     {
                         continue;
                     }
@@ -172,15 +172,16 @@ public sealed class ForegroundWindowAutomationProvider : IForegroundWindowAutoma
     private static bool TryCreateCandidate(
         AutomationElement element,
         string uiPath,
-        out ObservationCandidateElementDto? candidate,
+        out ObservationCandidateElementDto candidate,
         out int score)
     {
-        candidate = null;
+        candidate = null!;
         score = 0;
 
-        AutomationElementInformation current;
+        System.Windows.Automation.AutomationElement.AutomationElementInformation current;
         try
         {
+            // Accessing Current can throw when the element becomes unavailable mid-traversal.
             current = element.Current;
         }
         catch
