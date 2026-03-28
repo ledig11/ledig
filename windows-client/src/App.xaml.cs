@@ -34,7 +34,7 @@ namespace WindowsStepGuide.Client
             }
             catch (Exception ex)
             {
-                MessageBox.Show(
+                System.Windows.MessageBox.Show(
                     $"启动主窗口失败：{ex.Message}",
                     "Windows Step Guide",
                     MessageBoxButton.OK,
