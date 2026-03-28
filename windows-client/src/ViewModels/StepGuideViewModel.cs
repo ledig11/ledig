@@ -427,6 +427,14 @@ public sealed class StepGuideViewModel : INotifyPropertyChanged
 
     public void MarkRealtimeDisconnected(string reason)
     {
+        string normalizedReason = reason.Trim();
+        if (normalizedReason.Contains("404", StringComparison.OrdinalIgnoreCase)
+            && normalizedReason.Contains("101", StringComparison.OrdinalIgnoreCase))
+        {
+            RealtimeStatus = "实时通道未启用（可忽略，不影响“分析下一步”）。";
+            return;
+        }
+
         RealtimeStatus = $"实时通道已断开: {reason}";
     }
 

@@ -21,11 +21,11 @@ public sealed class RealtimeEventClient : IRealtimeEventClient
         PropertyNamingPolicy = JsonNamingPolicy.SnakeCaseLower,
     };
 
-    private readonly Uri _wsUri;
+    private readonly IReadOnlyList<Uri> _wsUris;
 
     public RealtimeEventClient(Uri backendBaseAddress)
     {
-        _wsUri = BuildWebSocketUri(backendBaseAddress);
+        _wsUris = BuildWebSocketUris(backendBaseAddress);
     }
 
     public async Task RunAsync(
@@ -34,35 +34,50 @@ public sealed class RealtimeEventClient : IRealtimeEventClient
         Action<string> onDisconnected,
         CancellationToken cancellationToken)
     {
-        using ClientWebSocket socket = new();
-        try
+        string? lastError = null;
+        foreach (Uri wsUri in _wsUris)
         {
-            await socket.ConnectAsync(_wsUri, cancellationToken);
-            onConnected();
-            await ReceiveLoopAsync(socket, onEvent, cancellationToken);
-            onDisconnected("server closed");
+            using ClientWebSocket socket = new();
+            try
+            {
+                await socket.ConnectAsync(wsUri, cancellationToken);
+                onConnected();
+                await ReceiveLoopAsync(socket, onEvent, cancellationToken);
+                onDisconnected("server closed");
+                return;
+            }
+            catch (OperationCanceledException)
+            {
+                onDisconnected("cancelled");
+                return;
+            }
+            catch (Exception ex)
+            {
+                lastError = ex.Message;
+            }
         }
-        catch (OperationCanceledException)
-        {
-            onDisconnected("cancelled");
-        }
-        catch (Exception ex)
-        {
-            onDisconnected(ex.Message);
-        }
+
+        onDisconnected(lastError ?? "connect failed");
     }
 
-    private static Uri BuildWebSocketUri(Uri backendBaseAddress)
+    private static IReadOnlyList<Uri> BuildWebSocketUris(Uri backendBaseAddress)
     {
         string scheme = backendBaseAddress.Scheme.Equals("https", StringComparison.OrdinalIgnoreCase)
             ? "wss"
             : "ws";
-        UriBuilder builder = new(backendBaseAddress)
-        {
-            Scheme = scheme,
-            Path = "api/ws/events",
-        };
-        return builder.Uri;
+        return
+        [
+            new UriBuilder(backendBaseAddress)
+            {
+                Scheme = scheme,
+                Path = "api/ws/events",
+            }.Uri,
+            new UriBuilder(backendBaseAddress)
+            {
+                Scheme = scheme,
+                Path = "ws/events",
+            }.Uri,
+        ];
     }
 
     private static async Task ReceiveLoopAsync(

@@ -68,6 +68,24 @@ class MockStepPlanner(StepPlanner):
                     f"请先检查这个更接近目标的控件：{self._format_candidate_label(preferred_candidate)}。"
                 )
             action_type = "confirm_in_window"
+        elif self._looks_like_desktop_window(
+            normalized_window_title,
+            foreground_window_uia_name.casefold(),
+            foreground_window_uia_class_name.casefold(),
+            foreground_window_uia_control_type.casefold(),
+        ):
+            if self._looks_like_settings_intent(normalized_task_key):
+                instruction = (
+                    "当前前台是 Windows 桌面。请先按 Win+I 打开“设置”窗口，"
+                    f"然后继续任务“{normalized_task}”并再次点击“分析下一步”。"
+                )
+                action_type = "open_settings_app"
+            else:
+                instruction = (
+                    f"当前前台是 Windows 桌面。请先打开与任务“{normalized_task}”相关的目标窗口，"
+                    "然后再点击“分析下一步”。"
+                )
+                action_type = "open_target_window"
         elif window_kind == "settings_window":
             instruction = self._build_settings_instruction(
                 normalized_task,
@@ -146,6 +164,38 @@ class MockStepPlanner(StepPlanner):
     def _looks_like_window_shell(foreground_window_uia_control_type: str) -> bool:
         normalized_control_type = foreground_window_uia_control_type.casefold()
         return normalized_control_type in {"controltype.window", "controltype.pane"}
+
+    @staticmethod
+    def _looks_like_desktop_window(
+        normalized_window_title: str,
+        normalized_uia_name: str,
+        normalized_uia_class_name: str,
+        normalized_uia_control_type: str,
+    ) -> bool:
+        combined_text = " ".join(
+            value
+            for value in (
+                normalized_window_title,
+                normalized_uia_name,
+                normalized_uia_class_name,
+                normalized_uia_control_type,
+            )
+            if value
+        )
+        desktop_signals = (
+            "program manager",
+            "progman",
+            "workerw",
+            "shell_traywnd",
+            "desktop",
+            "controltype.pane",
+        )
+        return any(signal in combined_text for signal in desktop_signals)
+
+    @staticmethod
+    def _looks_like_settings_intent(normalized_task_key: str) -> bool:
+        compact_text = normalized_task_key.replace(" ", "")
+        return "设置" in compact_text or "settings" in compact_text
 
     @staticmethod
     def _classify_window_kind(
