@@ -38,6 +38,9 @@ What to check:
 
 ## 4) Triage Order
 1. Confirm fixture script passes.
-2. Check diagnostics for model errors and quality signals.
-3. Check timeline correlation by `session_id` or `screenshot_ref`.
-4. Re-run with narrowed filters (`planner_source`, `observation_quality`, `errors_only`).
+2. Check session runtime health:
+- `GET /api/sessions/runtime-stats`
+- verify `active_session_count`, `total_expired_evicted_count`, and `total_capacity_evicted_count`
+3. Check diagnostics for model errors and quality signals.
+4. Check timeline correlation by `session_id` or `screenshot_ref`.
+5. Re-run with narrowed filters (`planner_source`, `observation_quality`, `errors_only`).

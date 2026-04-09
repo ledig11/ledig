@@ -49,8 +49,11 @@ public sealed class NextStepResponse
     public string SessionId { get; set; } = string.Empty;
     public string StepId { get; set; } = string.Empty;
     public string Instruction { get; set; } = string.Empty;
+    public string? Message { get; set; }
     public string ActionType { get; set; } = string.Empty;
     public bool RequiresUserAction { get; set; }
+    public double? Confidence { get; set; }
+    public string? ObservationSummary { get; set; }
     public HighlightResponse? Highlight { get; set; }
 }
 

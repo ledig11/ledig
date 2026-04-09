@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import sys
+import tempfile
 from pathlib import Path
 import time
 import unittest
@@ -32,6 +33,36 @@ class SessionManagerTests(unittest.TestCase):
         fresh = manager.create_session("latest-task")
         self.assertIsNotNone(manager.get_session(fresh.session_id))
         self.assertIsNone(manager.get_session(oldest_id))
+
+    def test_sessions_persist_to_sqlite(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            db_path = Path(temp_dir) / "session_runtime.db"
+            manager = SessionManager(
+                session_ttl_seconds=3600,
+                max_sessions=100,
+                database_path=db_path,
+            )
+            created = manager.create_session("打开设置")
+            manager.upsert_from_next_step(
+                session_id=created.session_id,
+                task_text="打开设置",
+                step_id="step-1",
+                action_type="open_settings_app",
+                message="请先打开设置",
+                last_observation_ref="local://test",
+            )
+
+            reloaded = SessionManager(
+                session_ttl_seconds=3600,
+                max_sessions=100,
+                database_path=db_path,
+            )
+            state = reloaded.get_session(created.session_id)
+            self.assertIsNotNone(state)
+            assert state is not None
+            self.assertEqual(state.current_step_id, "step-1")
+            self.assertEqual(state.last_observation_ref, "local://test")
+            self.assertGreaterEqual(len(state.step_history), 1)
 
 
 if __name__ == "__main__":

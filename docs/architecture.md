@@ -23,7 +23,7 @@
 - `POST /api/sessions/{session_id}/next-step`: run planner for one next step under session
 - `POST /api/sessions/{session_id}/feedback`: submit `completed | incorrect | reanalyze`
 - Existing `POST /api/analyze` and `POST /api/feedback` remain available for compatibility
-- Session state is in-memory only in this phase (no database persistence)
+- Session state is cached in memory and persisted into SQLite (`backend/data/session_runtime.db`)
 - Step history now records both next-step outputs and feedback events for replay/debug
 
 ## Shared

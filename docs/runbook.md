@@ -54,6 +54,12 @@ Run session runtime golden path (`create session -> next-step -> feedback -> get
 make qa-session-golden
 ```
 
+Run 5-scenario session fixture matrix:
+
+```bash
+make qa-session-matrix
+```
+
 ## 4) Debug Endpoints
 - `GET /api/debug/analyze-diagnostics`
 - `GET /api/debug/diagnostic-timeline`

@@ -21,6 +21,10 @@ Session runtime (Phase 1, in-memory):
 - `POST /api/sessions/{session_id}/next-step`
 - `POST /api/sessions/{session_id}/feedback`
 
+Session runtime persistence:
+- Session state is cached in memory and persisted to SQLite file: `backend/data/session_runtime.db`
+- Session rows survive backend process restart (subject to TTL cleanup rules)
+
 `GET /api/sessions/runtime-stats` fields:
 - `active_session_count`
 - `max_sessions`
@@ -48,6 +52,10 @@ Runtime model configuration:
 Session runtime configuration (in-memory):
 - `WINDOWS_STEP_GUIDE_SESSION_TTL_SECONDS` default: `14400` (4 hours)
 - `WINDOWS_STEP_GUIDE_SESSION_MAX_COUNT` default: `500`
+
+Session API error codes:
+- `session_not_found` (`404`)
+- `session_id_mismatch` (`400`)
 
 Safety behavior:
 - If the provider is unsupported, the API key is missing, the model request fails, or the model returns invalid JSON, the backend falls back to `MockStepPlanner`.

@@ -259,7 +259,10 @@ public sealed class StepGuideViewModel : INotifyPropertyChanged
                 : response.StepId;
             OnPropertyChanged(nameof(CurrentSessionId));
             OnPropertyChanged(nameof(CurrentStepId));
-            Instruction = response.Instruction;
+            string instructionText = string.IsNullOrWhiteSpace(response.Instruction)
+                ? (response.Message ?? "后端未返回步骤说明。")
+                : response.Instruction;
+            Instruction = instructionText;
             HighlightText = FormatHighlight(response.Highlight);
             UpdateHighlightPreview(response.Highlight);
         }

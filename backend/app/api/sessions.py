@@ -20,6 +20,16 @@ from app.storage.log_store_port import LogStorePort
 router = APIRouter()
 
 
+def _raise_api_error(status_code: int, code: str, message: str) -> None:
+    raise HTTPException(
+        status_code=status_code,
+        detail={
+            "code": code,
+            "message": message,
+        },
+    )
+
+
 def get_session_manager() -> SessionManager:
     return session_manager
 
@@ -63,7 +73,7 @@ def get_session(
 ) -> SessionState:
     state = manager.get_session(session_id)
     if state is None:
-        raise HTTPException(status_code=404, detail="session not found")
+        _raise_api_error(404, "session_not_found", "session not found")
     return state
 
 
@@ -75,7 +85,7 @@ async def next_step(
 ) -> SessionNextStepResponse:
     current_state = service.get_session_state(session_id)
     if current_state is None:
-        raise HTTPException(status_code=404, detail="session not found")
+        _raise_api_error(404, "session_not_found", "session not found")
 
     analyze_request = AnalyzeRequest(
         task_text=request.task_text,
@@ -122,11 +132,11 @@ async def feedback(
     log_store: LogStorePort = Depends(get_log_store),
 ) -> SessionFeedbackResponse:
     if request.session_id is not None and request.session_id != session_id:
-        raise HTTPException(status_code=400, detail="session_id mismatch")
+        _raise_api_error(400, "session_id_mismatch", "session_id mismatch")
 
     session_state = service.get_session_state(session_id)
     if session_state is None:
-        raise HTTPException(status_code=404, detail="session not found")
+        _raise_api_error(404, "session_not_found", "session not found")
 
     accepted = service.apply_feedback(
         session_id=session_id,
@@ -172,10 +182,3 @@ async def feedback(
         feedback_type=request.feedback_type,
         message=message,
     )
-
-
-@router.get("/sessions-runtime/stats")
-def runtime_stats(
-    manager: SessionManager = Depends(get_session_manager),
-) -> dict[str, int]:
-    return manager.get_runtime_stats()

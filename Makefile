@@ -1,4 +1,4 @@
-.PHONY: qa-fixtures qa-fixtures-json qa-golden qa-sessions qa-session-golden qa-all py-compile
+.PHONY: qa-fixtures qa-fixtures-json qa-golden qa-sessions qa-session-golden qa-session-matrix qa-all py-compile
 
 qa-fixtures:
 	python3 backend/scripts/run_scenario_fixture_checks.py
@@ -16,6 +16,9 @@ qa-sessions:
 
 qa-session-golden:
 	python3 backend/scripts/run_session_golden_check.py
+
+qa-session-matrix:
+	python3 backend/scripts/run_session_fixture_matrix_check.py
 
 py-compile:
 	python3 -m py_compile \
@@ -36,7 +39,8 @@ py-compile:
 		backend/app/services/next_step_service.py \
 		backend/scripts/run_scenario_fixture_checks.py \
 		backend/scripts/run_golden_path_check.py \
-		backend/scripts/run_session_golden_check.py
+		backend/scripts/run_session_golden_check.py \
+		backend/scripts/run_session_fixture_matrix_check.py
 
-qa-all: py-compile qa-fixtures qa-sessions qa-session-golden qa-golden
+qa-all: py-compile qa-fixtures qa-sessions qa-session-golden qa-session-matrix qa-golden
 	@echo "QA all passed."

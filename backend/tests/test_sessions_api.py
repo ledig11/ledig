@@ -66,6 +66,8 @@ class SessionsApiTests(unittest.TestCase):
             },
         )
         self.assertEqual(response.status_code, 404)
+        detail = response.json().get("detail", {})
+        self.assertEqual(detail.get("code"), "session_not_found")
 
     def test_session_next_step_and_feedback_flow(self) -> None:
         create_response = self.client.post("/api/sessions", json={"task_text": "打开设置并进入个性化页面"})
@@ -128,6 +130,8 @@ class SessionsApiTests(unittest.TestCase):
             },
         )
         self.assertEqual(mismatch_response.status_code, 400)
+        detail = mismatch_response.json().get("detail", {})
+        self.assertEqual(detail.get("code"), "session_id_mismatch")
 
     def test_runtime_stats_endpoint(self) -> None:
         response = self.client.get("/api/sessions/runtime-stats")
