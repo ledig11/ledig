@@ -5,6 +5,7 @@ from typing import Optional
 from fastapi import APIRouter, Depends, Header
 
 from app.contracts import AnalyzeRequest, NextStepResponse, RealtimeEventEntry
+from app.orchestrator.session_manager import session_manager
 from app.services.model_gateway import OpenAIResponsesGateway
 from app.services.prompt_builder import StepPlannerPromptBuilder
 from app.services.realtime_hub import realtime_event_hub
@@ -251,6 +252,14 @@ async def analyze(
         planner_error_code=planner_result.planner_error_code,
         planner_error=planner_result.planner_error,
         raw_model_response_excerpt=planner_result.raw_model_response_excerpt,
+    )
+    session_manager.upsert_from_next_step(
+        session_id=response.session_id,
+        task_text=request.task_text,
+        step_id=response.step_id,
+        action_type=response.action_type,
+        message=response.instruction,
+        last_observation_ref=normalize_text(request.observation.screenshot_ref),
     )
     await realtime_event_hub.publish(
         RealtimeEventEntry(

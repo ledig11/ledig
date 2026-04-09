@@ -1,0 +1,36 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "FeedbackRequest",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "session_id",
+    "step_id",
+    "feedback_type"
+  ],
+  "properties": {
+    "session_id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "step_id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "feedback_type": {
+      "type": "string",
+      "enum": [
+        "completed",
+        "incorrect",
+        "reanalyze"
+      ]
+    },
+    "comment": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "maxLength": 500
+    }
+  }
+}

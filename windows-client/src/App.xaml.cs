@@ -57,6 +57,8 @@ namespace WindowsStepGuide.Client
             services.AddSingleton(runtimeModelConfig);
             services.AddSingleton<IAnalyzeApiClient>(
                 _ => new AnalyzeApiClient(backendBaseAddress, runtimeModelConfig));
+            services.AddSingleton<ISessionApiClient>(
+                _ => new SessionApiClient(backendBaseAddress));
             services.AddSingleton<IRealtimeEventClient>(
                 _ => new RealtimeEventClient(backendBaseAddress));
             services.AddSingleton<IObservationHistoryStore, ObservationHistoryStore>();

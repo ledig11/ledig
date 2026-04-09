@@ -1,0 +1,76 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "SessionState",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "session_id",
+    "created_at",
+    "step_history"
+  ],
+  "properties": {
+    "session_id": {
+      "type": "string"
+    },
+    "created_at": {
+      "type": "string"
+    },
+    "task_text": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "last_observation_ref": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "current_step_id": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "last_feedback_type": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "step_history": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "created_at",
+          "step_id",
+          "action_type",
+          "message"
+        ],
+        "properties": {
+          "created_at": {
+            "type": "string"
+          },
+          "step_id": {
+            "type": "string"
+          },
+          "action_type": {
+            "type": "string"
+          },
+          "message": {
+            "type": "string"
+          },
+          "feedback_type": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        }
+      }
+    }
+  }
+}

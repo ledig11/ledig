@@ -3,6 +3,7 @@ using System.Collections.ObjectModel;
 using System.Diagnostics;
 using System.Runtime.CompilerServices;
 using WindowsStepGuide.Client.Contracts;
+using WindowsStepGuide.Client.Models;
 using WindowsStepGuide.Client.Services;
 
 namespace WindowsStepGuide.Client.ViewModels;
@@ -12,7 +13,7 @@ public sealed class StepGuideViewModel : INotifyPropertyChanged
     private const double PreviewCanvasWidth = 240;
     private const double PreviewCanvasHeight = 140;
 
-    private readonly IAnalyzeApiClient _apiClient;
+    private readonly ISessionApiClient _sessionApiClient;
     private readonly IObservationContextProvider _observationContextProvider;
     private readonly IObservationHistoryStore _observationHistoryStore;
     private readonly IObservationManifestStore _observationManifestStore;
@@ -44,13 +45,13 @@ public sealed class StepGuideViewModel : INotifyPropertyChanged
     private double _previewHeight;
 
     public StepGuideViewModel(
-        IAnalyzeApiClient apiClient,
+        ISessionApiClient sessionApiClient,
         IObservationContextProvider observationContextProvider,
         IObservationHistoryStore observationHistoryStore,
         IObservationManifestStore observationManifestStore,
         RuntimeModelConfig runtimeModelConfig)
     {
-        _apiClient = apiClient;
+        _sessionApiClient = sessionApiClient;
         _observationContextProvider = observationContextProvider;
         _observationHistoryStore = observationHistoryStore;
         _observationManifestStore = observationManifestStore;
@@ -215,6 +216,7 @@ public sealed class StepGuideViewModel : INotifyPropertyChanged
 
     public async Task AnalyzeAsync()
     {
+        await EnsureSessionAsync();
         await AnalyzeAsync(CreateObservation());
     }
 
@@ -232,14 +234,17 @@ public sealed class StepGuideViewModel : INotifyPropertyChanged
 
         try
         {
+            await EnsureSessionAsync();
+            observation.SessionId = _currentSessionId == "local-session-pending" ? null : _currentSessionId;
             CanAnalyze = false;
             AnalyzeNextButtonText = "分析中...";
             ReanalyzeButtonText = "分析中...";
-            NextStepResponse response = await _apiClient.AnalyzeAsync(new AnalyzeRequest
+            AnalyzeRequest analyzeRequest = new()
             {
                 TaskText = TaskText.Trim(),
                 Observation = observation,
-            });
+            };
+            NextStepResponse response = await RequestNextStepWithSessionRecoveryAsync(analyzeRequest);
 
             LastObservationSummary =
                 $"foreground_window_title={observation.ForegroundWindowTitle}\nforeground_window_uia_control_type={observation.ForegroundWindowUiaControlType}\nforeground_window_actionable_summary={observation.ForegroundWindowActionableSummary}\nforeground_window_candidate_count={observation.ForegroundWindowCandidateCount}\nforeground_window_scan_node_count={observation.ForegroundWindowScanNodeCount}\nforeground_window_scan_depth={observation.ForegroundWindowScanDepth}\ncandidate_element_count={observation.ForegroundWindowCandidateElements.Count}\nscreen={observation.ScreenWidth}x{observation.ScreenHeight}\nscreenshot_ref={observation.ScreenshotRef}\nscreenshot_status={observation.ScreenshotStatus}\nscreenshot_local_path={observation.ScreenshotLocalPath}";
@@ -275,10 +280,49 @@ public sealed class StepGuideViewModel : INotifyPropertyChanged
         }
     }
 
+    private async Task<NextStepResponse> RequestNextStepWithSessionRecoveryAsync(AnalyzeRequest request)
+    {
+        try
+        {
+            return await _sessionApiClient.NextStepAsync(_currentSessionId, request);
+        }
+        catch (HttpRequestException ex) when (LooksLikeSessionNotFound(ex.Message))
+        {
+            // Backend may restart and lose in-memory sessions. Recreate once and retry.
+            _currentSessionId = "local-session-pending";
+            OnPropertyChanged(nameof(CurrentSessionId));
+            await EnsureSessionAsync();
+            request.Observation.SessionId = _currentSessionId;
+            return await _sessionApiClient.NextStepAsync(_currentSessionId, request);
+        }
+    }
+
+    private static bool LooksLikeSessionNotFound(string message)
+    {
+        string normalized = message ?? string.Empty;
+        return normalized.Contains("404", StringComparison.OrdinalIgnoreCase)
+            && normalized.Contains("session", StringComparison.OrdinalIgnoreCase);
+    }
+
     public ObservationDto CreateObservation()
     {
         string? sessionId = _currentSessionId == "local-session-pending" ? null : _currentSessionId;
         return _observationContextProvider.CreateObservation(sessionId);
+    }
+
+    private async Task EnsureSessionAsync()
+    {
+        if (_currentSessionId != "local-session-pending")
+        {
+            return;
+        }
+
+        string sessionId = await _sessionApiClient.CreateSessionAsync(TaskText.Trim());
+        if (!string.IsNullOrWhiteSpace(sessionId))
+        {
+            _currentSessionId = sessionId;
+            OnPropertyChanged(nameof(CurrentSessionId));
+        }
     }
 
     private void TryRecordObservation(ObservationDto observation, ObservationManifestSaveResult manifestSaveResult)
@@ -372,9 +416,9 @@ public sealed class StepGuideViewModel : INotifyPropertyChanged
         };
     }
 
-    public StepFeedbackRequest CreateFeedbackRequest(string feedbackType, string? comment = null)
+    public FeedbackRequest CreateFeedbackRequest(string feedbackType, string? comment = null)
     {
-        StepFeedbackRequest feedback = new()
+        FeedbackRequest feedback = new()
         {
             SessionId = _currentSessionId,
             StepId = _currentStepId,
@@ -383,28 +427,47 @@ public sealed class StepGuideViewModel : INotifyPropertyChanged
         };
 
         Debug.WriteLine(
-            $"Local StepFeedbackRequest => session_id={feedback.SessionId}, step_id={feedback.StepId}, feedback_type={feedback.FeedbackType}, comment={feedback.Comment}");
+            $"Local FeedbackRequest => session_id={_currentSessionId}, step_id={feedback.StepId}, feedback_type={feedback.FeedbackType}, comment={feedback.Comment}");
 
         return feedback;
     }
 
     public async Task<bool> SubmitFeedbackAsync(string feedbackType, string? comment = null)
     {
-        StepFeedbackRequest feedback = CreateFeedbackRequest(feedbackType, comment);
+        if (_currentSessionId == "local-session-pending" || _currentStepId == "step-pending")
+        {
+            LastFeedbackType = feedbackType;
+            LastFeedbackText = $"type={feedbackType}\nsession={_currentSessionId}\nstep={_currentStepId}\nstatus=failed\nmessage=session or step not ready";
+            return false;
+        }
+
+        FeedbackRequest feedback = CreateFeedbackRequest(feedbackType, comment);
 
         try
         {
-            StepFeedbackResponse response = await _apiClient.SubmitFeedbackAsync(feedback);
+            FeedbackResponse response = await _sessionApiClient.SubmitFeedbackAsync(_currentSessionId, feedback);
             LastFeedbackType = response.FeedbackType;
             LastFeedbackText =
                 $"type={response.FeedbackType}\nsession={response.SessionId}\nstep={response.StepId}\nstatus={(response.Accepted ? "accepted" : "rejected")}\nmessage={response.Message}";
             return response.Accepted;
         }
+        catch (HttpRequestException ex) when (LooksLikeSessionNotFound(ex.Message))
+        {
+            _currentSessionId = "local-session-pending";
+            _currentStepId = "step-pending";
+            OnPropertyChanged(nameof(CurrentSessionId));
+            OnPropertyChanged(nameof(CurrentStepId));
+            await EnsureSessionAsync();
+            LastFeedbackType = feedback.FeedbackType;
+            LastFeedbackText =
+                $"type={feedback.FeedbackType}\nsession={_currentSessionId}\nstep=step-pending\nstatus=failed\nmessage=session expired and recreated; please reanalyze";
+            return false;
+        }
         catch (Exception ex)
         {
             LastFeedbackType = feedback.FeedbackType;
             LastFeedbackText =
-                $"type={feedback.FeedbackType}\nsession={feedback.SessionId}\nstep={feedback.StepId}\nstatus=failed\nmessage={ex.Message}";
+                $"type={feedback.FeedbackType}\nsession={_currentSessionId}\nstep={feedback.StepId}\nstatus=failed\nmessage={ex.Message}";
             return false;
         }
     }

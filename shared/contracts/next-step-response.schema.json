@@ -8,8 +8,7 @@
     "step_id",
     "instruction",
     "action_type",
-    "requires_user_action",
-    "highlight"
+    "requires_user_action"
   ],
   "properties": {
     "session_id": {
@@ -21,11 +20,25 @@
     "instruction": {
       "type": "string"
     },
+    "message": {
+      "type": "string"
+    },
     "action_type": {
       "type": "string"
     },
     "requires_user_action": {
       "type": "boolean"
+    },
+    "confidence": {
+      "type": "number",
+      "minimum": 0,
+      "maximum": 1
+    },
+    "observation_summary": {
+      "type": [
+        "string",
+        "null"
+      ]
     },
     "highlight": {
       "type": "object",

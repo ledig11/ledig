@@ -13,6 +13,7 @@ make qa-all
 This runs:
 - Python syntax checks for key backend modules
 - fixture regression checks
+- session runtime unit checks
 - golden-path end-to-end API check
 
 ## 2) Scenario Regression
@@ -47,6 +48,12 @@ Run personalization golden path (`analyze -> incorrect -> recover -> confirm`):
 make qa-golden
 ```
 
+Run session runtime golden path (`create session -> next-step -> feedback -> get session`):
+
+```bash
+make qa-session-golden
+```
+
 ## 4) Debug Endpoints
 - `GET /api/debug/analyze-diagnostics`
 - `GET /api/debug/diagnostic-timeline`
@@ -71,3 +78,23 @@ Use filters:
 3. If API shape issues appear:
 - verify `shared/contracts/analyze-request.schema.json`
 - verify backend/client observation DTO fields are aligned
+
+## 6) Session Runtime Checks
+Run session API unit tests:
+
+```bash
+python3 -m unittest backend.tests.test_sessions_api -v
+python3 -m unittest backend.tests.test_session_manager -v
+python3 -m unittest backend.tests.test_legacy_api_session_sync -v
+```
+
+Session API smoke sequence:
+1. `POST /api/sessions`
+2. `POST /api/sessions/{session_id}/next-step`
+3. `POST /api/sessions/{session_id}/feedback`
+4. `GET /api/sessions/{session_id}`
+5. `GET /api/sessions/runtime-stats`
+
+If `next-step` returns `404 session not found` after backend restart:
+- this is expected for in-memory sessions
+- client now recreates a session automatically and retries once
