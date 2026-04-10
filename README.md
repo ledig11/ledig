@@ -55,3 +55,44 @@ Help users complete computer operations step by step, one step at a time.
 - Extend software-install scenario-state templates to app-specific installers
 - Add controlled screenshot-to-model input transport (metadata-only gate is already in place)
 - Complete Windows manual smoke run and freeze v1.0.0-rc release checklist
+
+## Windows Test Scripts
+Under `scripts/windows/`:
+- `start-backend.ps1`: create venv, install deps, and run backend
+- `run-backend-qa.ps1`: run backend QA checks (`-Full` includes RC stability)
+- `start-client.ps1`: build + run WPF client, auto-prefill startup model config from env vars
+- `start-local-test.ps1`: one-command local test flow (backend + QA + client)
+- `start-backend-bailian.ps1`: start backend with Bailian/OpenAI-compatible defaults
+- `start-client-bailian.ps1`: start client with Bailian presets and model selection
+- `start-local-test-bailian.ps1`: one-command Bailian local test flow
+
+API key options:
+1. Pass directly in script:
+```powershell
+.\scripts\windows\start-backend.ps1 -ApiKey "sk-..."
+.\scripts\windows\start-client.ps1 -ApiKey "sk-..." -AuthMode api_key
+```
+2. Or use env var:
+```powershell
+$env:OPENAI_API_KEY="sk-..."
+```
+Then run scripts without `-ApiKey`.
+
+### Bailian (OpenAI-compatible) quick start
+1) Start backend with Bailian:
+```powershell
+.\scripts\windows\start-backend-bailian.ps1 -ApiKey "YOUR_KEY" -ModelType "qwen3.5-plus"
+```
+2) Start client with Bailian preset:
+```powershell
+.\scripts\windows\start-client-bailian.ps1 -ApiKey "YOUR_KEY" -ModelType "kimi-k2.5"
+```
+3) Or run full local flow:
+```powershell
+.\scripts\windows\start-local-test-bailian.ps1 -ApiKey "YOUR_KEY" -ModelType "qwen3.5-plus" -RunRc
+```
+
+Notes:
+- `BaseUrl` can be the root endpoint `https://coding.dashscope.aliyuncs.com/v1`.
+- Backend auto-resolves OpenAI-compatible chat endpoint (`/chat/completions`) when needed.
+- In client startup window, you can switch model presets (`qwen3.5-plus`, `kimi-k2.5`) or type custom model names.

@@ -55,7 +55,15 @@ class OpenAIResponsesGateway(ModelGateway):
                 code="model_access_not_configured",
             )
 
-        use_responses_api = self._is_responses_endpoint(runtime_model_config.base_url)
+        api_mode = self._detect_api_mode(
+            base_url=runtime_model_config.base_url,
+            provider=runtime_model_config.provider,
+        )
+        use_responses_api = api_mode == "responses"
+        request_url = self._resolve_request_url(
+            base_url=runtime_model_config.base_url,
+            api_mode=api_mode,
+        )
         payload = self._build_request_payload(
             prompt_bundle=prompt_bundle,
             model_type=runtime_model_config.model_type,
@@ -64,7 +72,7 @@ class OpenAIResponsesGateway(ModelGateway):
 
         request_body = json.dumps(payload).encode("utf-8")
         http_request = request.Request(
-            runtime_model_config.base_url,
+            request_url,
             data=request_body,
             headers={
                 "Authorization": f"Bearer {runtime_model_config.api_key}",
@@ -193,9 +201,32 @@ class OpenAIResponsesGateway(ModelGateway):
             return compact_text
         return f"{compact_text[:limit]}..."
     @staticmethod
-    def _is_responses_endpoint(base_url: str) -> bool:
-        normalized = base_url.strip().lower()
-        return normalized.endswith("/responses")
+    def _detect_api_mode(*, base_url: str, provider: str) -> str:
+        normalized = base_url.strip().lower().rstrip("/")
+        if normalized.endswith("/responses"):
+            return "responses"
+        if normalized.endswith("/chat/completions"):
+            return "chat_completions"
+
+        # Keep OpenAI official default on Responses API; compatible providers default to chat-completions.
+        if provider.strip().lower() == "openai":
+            return "responses"
+        return "chat_completions"
+
+    @staticmethod
+    def _resolve_request_url(*, base_url: str, api_mode: str) -> str:
+        normalized = base_url.strip().rstrip("/")
+        if not normalized:
+            return normalized
+
+        if api_mode == "responses":
+            if normalized.lower().endswith("/responses"):
+                return normalized
+            return f"{normalized}/responses"
+
+        if normalized.lower().endswith("/chat/completions"):
+            return normalized
+        return f"{normalized}/chat/completions"
 
     def _build_request_payload(
         self,

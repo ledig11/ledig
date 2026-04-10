@@ -57,6 +57,10 @@ Session API error codes:
 - `session_not_found` (`404`)
 - `session_id_mismatch` (`400`)
 
+OpenAI-compatible base URL behavior:
+- If Base URL is a root endpoint such as `https://coding.dashscope.aliyuncs.com/v1`, backend will automatically route requests to `/chat/completions`.
+- If Base URL already ends with `/responses` or `/chat/completions`, backend uses it directly.
+
 Safety behavior:
 - If the provider is unsupported, the API key is missing, the model request fails, or the model returns invalid JSON, the backend falls back to `MockStepPlanner`.
 - If model output has an empty instruction or an unsafe/unsupported `action_type`, the backend also falls back to safe scenario/mock planning.

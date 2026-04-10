@@ -44,6 +44,15 @@
             <TextBlock Text="模型类型"
                        FontWeight="Bold"
                        Margin="0,8,0,6" />
+            <ComboBox x:Name="ModelPresetComboBox"
+                      SelectionChanged="ModelPresetComboBox_SelectionChanged"
+                      Margin="0,0,0,6">
+                <ComboBoxItem Content="自定义（手动输入）" Tag="" />
+                <ComboBoxItem Content="qwen3.5-plus" Tag="qwen3.5-plus" />
+                <ComboBoxItem Content="kimi-k2.5" Tag="kimi-k2.5" />
+                <ComboBoxItem Content="qwen3-coder-plus" Tag="qwen3-coder-plus" />
+                <ComboBoxItem Content="gpt-4.1" Tag="gpt-4.1" />
+            </ComboBox>
             <TextBox x:Name="ModelTypeTextBox"
                      Margin="0,0,0,8" />
             <TextBlock x:Name="CredentialLabelTextBlock"
