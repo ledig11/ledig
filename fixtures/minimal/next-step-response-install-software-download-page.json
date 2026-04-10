@@ -1,0 +1,15 @@
+{
+  "session_id": "mock-session-5c18e051",
+  "step_id": "scenario-download-installer",
+  "instruction": "当前看起来在下载页面。请先点击安装包下载入口：ControlType.Button:立即下载 (automation_id=download_button, path=foreground-window/child[0])。",
+  "action_type": "download_installer",
+  "requires_user_action": true,
+  "highlight": {
+    "rect": {
+      "x": 980,
+      "y": 210,
+      "width": 160,
+      "height": 44
+    }
+  }
+}

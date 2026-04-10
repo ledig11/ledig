@@ -13,9 +13,10 @@ Help users complete computer operations step by step, one step at a time.
 - Human-in-the-loop assistance
 
 ## Current Status
-- FastAPI backend with `analyze` and `feedback` APIs
+- FastAPI backend with legacy APIs (`/api/analyze`, `/api/feedback`) and session APIs (`/api/sessions/*`)
 - WPF floating panel plus lightweight highlight overlay
 - SQLite logging for analyze, feedback, sessions, and observation traces
+- SQLite-backed session runtime persistence (`backend/data/session_runtime.db`) with in-memory cache
 - Backend session state tracking for current step and feedback counters
 - Semi-real observation fields for foreground window title and primary screen size
 - Local observation reference, local screenshot file attempt, and local manifest JSON
@@ -30,6 +31,7 @@ Help users complete computer operations step by step, one step at a time.
 - A third dedicated Windows Settings -> Display scenario is now supported, including incorrect-feedback recovery
 - A fourth dedicated Windows Settings -> Personalization scenario is now supported, including incorrect-feedback recovery
 - A fifth dedicated Windows Settings -> Time & Language scenario is now supported, including incorrect-feedback recovery
+- A software installation scenario is now supported (browser download page -> installer wizard guidance)
 - Analyze diagnostics now include observation-quality fields (candidate count, scanned nodes, scan depth, quality level)
 - Observation metrics now also use strongly typed request fields (`foreground_window_candidate_count`, `foreground_window_scan_node_count`, `foreground_window_scan_depth`)
 - A diagnostic timeline debug view is now available to correlate planner diagnostics with observation records
@@ -40,6 +42,7 @@ Help users complete computer operations step by step, one step at a time.
 - A fixture-driven regression script now checks core scenario planners in one command
 - A QA checklist now documents the required regression/debug verification flow
 - A one-page runbook now provides unified local validation and troubleshooting flow
+- CI now validates backend QA and Windows client build in GitHub Actions
 - WPF client startup now uses dependency injection for service wiring
 - WPF startup config now supports API Key as optional so local safe-fallback validation can proceed without external model access
 - WPF startup config now supports membership-token/API-Key auth mode plus provider/base-url/model selection for OpenAI-compatible switching
@@ -49,6 +52,6 @@ Help users complete computer operations step by step, one step at a time.
 - Backend API layers now depend on a `LogStore` interface port for easier mock-friendly replacement
 
 ## Next
-- Extend scenario-state templates to additional high-frequency Windows tasks
-- Validate one real Windows task scenario end to end with repeatable fixtures
-- Evolve screenshot metadata fallback into model-usable image input in a safe, bounded flow
+- Extend software-install scenario-state templates to app-specific installers
+- Add controlled screenshot-to-model input transport (metadata-only gate is already in place)
+- Complete Windows manual smoke run and freeze v1.0.0-rc release checklist

@@ -17,6 +17,7 @@ from app.contracts import AnalyzeRequest, NextStepResponse, SessionStateEntry
 from app.services.prompt_builder import StepPlannerPromptBuilder
 from app.services.step_planner import (
     MockStepPlanner,
+    SoftwareInstallScenarioPlanner,
     SettingsBluetoothScenarioPlanner,
     SettingsDisplayScenarioPlanner,
     SettingsNetworkScenarioPlanner,
@@ -47,12 +48,15 @@ class CaseResult:
 
 
 def build_planner(session_state_reader=None):
-    return SettingsTimeLanguageScenarioPlanner(
-        fallback_planner=SettingsPersonalizationScenarioPlanner(
-            fallback_planner=SettingsDisplayScenarioPlanner(
-                fallback_planner=SettingsNetworkScenarioPlanner(
-                    fallback_planner=SettingsBluetoothScenarioPlanner(
-                        fallback_planner=MockStepPlanner(),
+    return SoftwareInstallScenarioPlanner(
+        fallback_planner=SettingsTimeLanguageScenarioPlanner(
+            fallback_planner=SettingsPersonalizationScenarioPlanner(
+                fallback_planner=SettingsDisplayScenarioPlanner(
+                    fallback_planner=SettingsNetworkScenarioPlanner(
+                        fallback_planner=SettingsBluetoothScenarioPlanner(
+                            fallback_planner=MockStepPlanner(),
+                            session_state_reader=session_state_reader,
+                        ),
                         session_state_reader=session_state_reader,
                     ),
                     session_state_reader=session_state_reader,
@@ -151,6 +155,8 @@ def collect_response_mismatches(
 
 def infer_scenario_name(request_file: str) -> str:
     normalized = request_file.casefold()
+    if "install" in normalized or "installer" in normalized:
+        return "installation"
     if "bluetooth" in normalized:
         return "bluetooth"
     if "network" in normalized:
@@ -308,7 +314,7 @@ def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Run scenario fixture regression checks.")
     parser.add_argument(
         "--scenario",
-        choices=["bluetooth", "network", "display", "personalization", "time-language", "all"],
+        choices=["bluetooth", "network", "display", "personalization", "time-language", "installation", "all"],
         default="all",
         help="Run only one scenario group.",
     )
@@ -428,6 +434,18 @@ def main() -> None:
             request_file="analyze-request-settings-time-language-recovery.json",
             expected_response_file="next-step-response-settings-time-language-recovery.json",
             incorrect_recovery_parent_action_type="open_time_language_settings",
+        ),
+        FixtureCase(
+            request_file="analyze-request-install-software-search.json",
+            expected_response_file="next-step-response-install-software-search.json",
+        ),
+        FixtureCase(
+            request_file="analyze-request-install-software-download-page.json",
+            expected_response_file="next-step-response-install-software-download-page.json",
+        ),
+        FixtureCase(
+            request_file="analyze-request-install-software-installer-wizard.json",
+            expected_response_file="next-step-response-install-software-installer-wizard.json",
         ),
     ]
 

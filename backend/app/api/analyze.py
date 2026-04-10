@@ -5,7 +5,8 @@ from typing import Optional
 from fastapi import APIRouter, Depends, Header
 
 from app.contracts import AnalyzeRequest, NextStepResponse, RealtimeEventEntry
-from app.orchestrator.session_manager import session_manager
+from app.orchestrator.session_provider import get_session_store
+from app.orchestrator.session_store_port import SessionStorePort
 from app.services.model_gateway import OpenAIResponsesGateway
 from app.services.prompt_builder import StepPlannerPromptBuilder
 from app.services.realtime_hub import realtime_event_hub
@@ -13,6 +14,7 @@ from app.services.runtime_model import RuntimeModelConfig, resolve_runtime_model
 from app.services.step_planner import (
     ModelStepPlanner,
     MockStepPlanner,
+    SoftwareInstallScenarioPlanner,
     SettingsBluetoothScenarioPlanner,
     SettingsDisplayScenarioPlanner,
     SettingsNetworkScenarioPlanner,
@@ -125,12 +127,15 @@ def get_step_planner(
     runtime_model_config: RuntimeModelConfig = Depends(get_runtime_model_config),
     log_store: LogStorePort = Depends(get_log_store),
 ) -> StepPlanner:
-    fallback_planner = SettingsTimeLanguageScenarioPlanner(
-        fallback_planner=SettingsPersonalizationScenarioPlanner(
-            fallback_planner=SettingsDisplayScenarioPlanner(
-                fallback_planner=SettingsNetworkScenarioPlanner(
-                    fallback_planner=SettingsBluetoothScenarioPlanner(
-                        fallback_planner=MockStepPlanner(),
+    fallback_planner = SoftwareInstallScenarioPlanner(
+        fallback_planner=SettingsTimeLanguageScenarioPlanner(
+            fallback_planner=SettingsPersonalizationScenarioPlanner(
+                fallback_planner=SettingsDisplayScenarioPlanner(
+                    fallback_planner=SettingsNetworkScenarioPlanner(
+                        fallback_planner=SettingsBluetoothScenarioPlanner(
+                            fallback_planner=MockStepPlanner(),
+                            session_state_reader=log_store.get_session_state,
+                        ),
                         session_state_reader=log_store.get_session_state,
                     ),
                     session_state_reader=log_store.get_session_state,
@@ -157,6 +162,7 @@ async def analyze(
     request: AnalyzeRequest,
     step_planner: StepPlanner = Depends(get_step_planner),
     log_store: LogStorePort = Depends(get_log_store),
+    session_store: SessionStorePort = Depends(get_session_store),
 ) -> NextStepResponse:
     created_at_utc = datetime.now(timezone.utc).isoformat()
     planner_result = step_planner.analyze(request)
@@ -253,7 +259,7 @@ async def analyze(
         planner_error=planner_result.planner_error,
         raw_model_response_excerpt=planner_result.raw_model_response_excerpt,
     )
-    session_manager.upsert_from_next_step(
+    session_store.upsert_from_next_step(
         session_id=response.session_id,
         task_text=request.task_text,
         step_id=response.step_id,

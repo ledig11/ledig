@@ -1,0 +1,38 @@
+{
+  "task_text": "安装示例软件并完成安装向导",
+  "observation": {
+    "session_id": "mock-session-edc3c6ea",
+    "captured_at_utc": "2026-04-09T08:02:00Z",
+    "foreground_window_title": "示例软件安装向导",
+    "foreground_window_uia_name": "示例软件安装向导",
+    "foreground_window_uia_automation_id": "InstallerWizard",
+    "foreground_window_uia_class_name": "InstallerWindow",
+    "foreground_window_uia_control_type": "ControlType.Window",
+    "foreground_window_uia_is_enabled": true,
+    "foreground_window_uia_child_count": 4,
+    "foreground_window_uia_child_summary": "ControlType.Text:欢迎使用安装向导 | ControlType.Button:下一步 | ControlType.Button:取消 | ControlType.Text:安装目录",
+    "foreground_window_actionable_summary": "window_kind=window; title=示例软件安装向导; control_type=ControlType.Window; child_count=4",
+    "foreground_window_candidate_elements": [
+      {
+        "name": "下一步",
+        "automation_id": "next_button",
+        "class_name": "Button",
+        "control_type": "ControlType.Button",
+        "is_enabled": true,
+        "is_offscreen": false,
+        "is_keyboard_focusable": true,
+        "has_keyboard_focus": true,
+        "ui_path": "foreground-window/child[1]",
+        "bounding_rect": {
+          "x": 860,
+          "y": 640,
+          "width": 100,
+          "height": 32
+        }
+      }
+    ],
+    "screen_width": 1280,
+    "screen_height": 720,
+    "screenshot_ref": "local://observation/install/080200"
+  }
+}

@@ -14,7 +14,7 @@ Current minimal persistence:
 - Session summary endpoint: `GET /api/debug/session-summaries`
 - Session state endpoint: `GET /api/debug/session-states`
 
-Session runtime (Phase 1, in-memory):
+Session runtime (Phase 1, sessionized):
 - `POST /api/sessions`
 - `GET /api/sessions/{session_id}`
 - `GET /api/sessions/runtime-stats`
@@ -49,7 +49,7 @@ Runtime model configuration:
   - `WINDOWS_STEP_GUIDE_MODEL_BASE_URL` default: `https://api.openai.com/v1/responses`
   - `WINDOWS_STEP_GUIDE_MODEL_TIMEOUT_SECONDS` default: `20`
 
-Session runtime configuration (in-memory):
+Session runtime configuration:
 - `WINDOWS_STEP_GUIDE_SESSION_TTL_SECONDS` default: `14400` (4 hours)
 - `WINDOWS_STEP_GUIDE_SESSION_MAX_COUNT` default: `500`
 
@@ -62,7 +62,7 @@ Safety behavior:
 - If model output has an empty instruction or an unsafe/unsupported `action_type`, the backend also falls back to safe scenario/mock planning.
 
 Scenario-aware planning:
-- Current dedicated settings scenarios: `Bluetooth`, `Network`, `Display`, and `Personalization`.
+- Current dedicated scenarios: `Settings Bluetooth`, `Settings Network`, `Settings Display`, `Settings Personalization`, `Settings Time & Language`, and `Software Installation`.
 - The model prompt builder now uses `step-planner.v2` and includes task-intent tags plus explicit action constraints.
 
 Fixture regression check:
@@ -76,6 +76,8 @@ Fixture regression check:
 - On failure, the script prints `expected vs actual` unified diff plus a suggested fixture replacement snippet.
 - See `docs/qa-checklist.md` and `docs/runbook.md` for end-to-end validation order.
 - Run `python3 backend/scripts/run_session_golden_check.py` for session runtime golden path (`create -> next-step -> feedback -> get session`).
+- Run `python3 backend/scripts/run_session_fixture_matrix_check.py` for multi-scenario session fixture matrix checks.
+- Run `python3 backend/scripts/run_rc_stability_check.py` for release-candidate stability sweep.
 
 Session state behavior:
 - `POST /api/analyze` now upserts the current session step, action, instruction, window title, and screenshot reference.

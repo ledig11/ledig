@@ -1,0 +1,15 @@
+{
+  "session_id": "mock-session-5353d4a8",
+  "step_id": "scenario-open-browser-for-install",
+  "instruction": "这是软件安装场景。请先打开浏览器并进入该软件的官方下载页面。",
+  "action_type": "open_browser_for_install",
+  "requires_user_action": true,
+  "highlight": {
+    "rect": {
+      "x": 640,
+      "y": 320,
+      "width": 280,
+      "height": 120
+    }
+  }
+}

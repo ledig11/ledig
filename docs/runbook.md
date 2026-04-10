@@ -54,10 +54,16 @@ Run session runtime golden path (`create session -> next-step -> feedback -> get
 make qa-session-golden
 ```
 
-Run 5-scenario session fixture matrix:
+Run 6-scenario session fixture matrix:
 
 ```bash
 make qa-session-matrix
+```
+
+Run release-candidate stability sweep:
+
+```bash
+make qa-rc
 ```
 
 ## 4) Debug Endpoints
@@ -102,5 +108,6 @@ Session API smoke sequence:
 5. `GET /api/sessions/runtime-stats`
 
 If `next-step` returns `404 session not found` after backend restart:
-- this is expected for in-memory sessions
-- client now recreates a session automatically and retries once
+- verify `backend/data/session_runtime.db` exists and is writable
+- verify TTL/max-count settings are not overly aggressive
+- client still includes one automatic session recreation fallback for safety

@@ -10,7 +10,8 @@ from app.contracts import AnalyzeRequest, ObservationDto, RealtimeEventEntry
 from app.models.feedback import SessionFeedbackRequest, SessionFeedbackResponse
 from app.models.next_step import SessionNextStepRequest, SessionNextStepResponse
 from app.models.session import CreateSessionRequest, CreateSessionResponse, SessionState
-from app.orchestrator.session_manager import SessionManager, session_manager
+from app.orchestrator.session_provider import get_session_store
+from app.orchestrator.session_store_port import SessionStorePort
 from app.services.next_step_service import NextStepService
 from app.services.realtime_hub import realtime_event_hub
 from app.services.runtime_model import RuntimeModelConfig
@@ -30,14 +31,10 @@ def _raise_api_error(status_code: int, code: str, message: str) -> None:
     )
 
 
-def get_session_manager() -> SessionManager:
-    return session_manager
-
-
 def get_next_step_service(
     runtime_model_config: RuntimeModelConfig = Depends(get_runtime_model_config),
     log_store: LogStorePort = Depends(get_log_store),
-    manager: SessionManager = Depends(get_session_manager),
+    manager: SessionStorePort = Depends(get_session_store),
 ) -> NextStepService:
     planner: StepPlanner = get_step_planner(runtime_model_config=runtime_model_config, log_store=log_store)
     return NextStepService(
@@ -50,7 +47,7 @@ def get_next_step_service(
 @router.post("/sessions", response_model=CreateSessionResponse)
 def create_session(
     request: Optional[CreateSessionRequest] = None,
-    manager: SessionManager = Depends(get_session_manager),
+    manager: SessionStorePort = Depends(get_session_store),
 ) -> CreateSessionResponse:
     state = manager.create_session(task_text=request.task_text if request is not None else None)
     return CreateSessionResponse(
@@ -61,7 +58,7 @@ def create_session(
 
 @router.get("/sessions/runtime-stats")
 def get_runtime_stats(
-    manager: SessionManager = Depends(get_session_manager),
+    manager: SessionStorePort = Depends(get_session_store),
 ) -> dict[str, int]:
     return manager.get_runtime_stats()
 
@@ -69,7 +66,7 @@ def get_runtime_stats(
 @router.get("/sessions/{session_id}", response_model=SessionState)
 def get_session(
     session_id: str = Path(..., min_length=1),
-    manager: SessionManager = Depends(get_session_manager),
+    manager: SessionStorePort = Depends(get_session_store),
 ) -> SessionState:
     state = manager.get_session(session_id)
     if state is None:

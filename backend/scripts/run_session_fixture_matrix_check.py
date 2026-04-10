@@ -21,6 +21,7 @@ CASES = [
     ("analyze-request-settings-display.json", "next-step-response-settings-display.json"),
     ("analyze-request-settings-personalization.json", "next-step-response-settings-personalization.json"),
     ("analyze-request-settings-time-language.json", "next-step-response-settings-time-language.json"),
+    ("analyze-request-install-software-download-page.json", "next-step-response-install-software-download-page.json"),
 ]
 
 
@@ -91,4 +92,3 @@ def run() -> int:
 
 if __name__ == "__main__":
     raise SystemExit(run())
-

@@ -30,14 +30,16 @@ Minimum expected:
 - Session golden check pass
 - Session matrix check pass
 - Legacy golden path check pass
+- RC stability check pass
 
-## 5 Scenario Acceptance Set
+## Scenario Acceptance Set
 Session matrix should pass all:
 1. Settings Bluetooth
 2. Settings Network
 3. Settings Display
 4. Settings Personalization
 5. Settings Time & Language
+6. Software Installation (download page)
 
 ## Manual Smoke Checklist (Windows Client)
 1. Launch app and create/continue a session.

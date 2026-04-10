@@ -3,7 +3,8 @@ from datetime import datetime, timezone
 from fastapi import APIRouter, Depends
 
 from app.contracts import RealtimeEventEntry, StepFeedbackRequest, StepFeedbackResponse
-from app.orchestrator.session_manager import session_manager
+from app.orchestrator.session_provider import get_session_store
+from app.orchestrator.session_store_port import SessionStorePort
 from app.services.realtime_hub import realtime_event_hub
 from app.storage.log_store import LogStore
 from app.storage.log_store_port import LogStorePort
@@ -19,6 +20,7 @@ def get_log_store() -> LogStorePort:
 async def submit_feedback(
     request: StepFeedbackRequest,
     log_store: LogStorePort = Depends(get_log_store),
+    session_store: SessionStorePort = Depends(get_session_store),
 ) -> StepFeedbackResponse:
     created_at_utc = datetime.now(timezone.utc).isoformat()
     response = StepFeedbackResponse(
@@ -43,7 +45,7 @@ async def submit_feedback(
         feedback_type=request.feedback_type,
         last_updated_at_utc=created_at_utc,
     )
-    session_manager.apply_feedback(
+    session_store.apply_feedback(
         session_id=request.session_id,
         step_id=request.step_id,
         feedback_type=request.feedback_type,

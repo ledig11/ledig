@@ -12,7 +12,7 @@ from app.api.analyze import (
     parse_actionable_summary_metrics,
 )
 from app.contracts import AnalyzeRequest, NextStepResponse
-from app.orchestrator.session_manager import SessionManager
+from app.orchestrator.session_store_port import SessionStorePort
 from app.services.step_planner import StepPlanner
 from app.storage.log_store_port import LogStorePort
 
@@ -31,7 +31,7 @@ class NextStepService:
         *,
         step_planner: StepPlanner,
         log_store: LogStorePort,
-        session_manager: SessionManager,
+        session_manager: SessionStorePort,
     ) -> None:
         self._step_planner = step_planner
         self._log_store = log_store
@@ -169,4 +169,3 @@ class NextStepService:
             comment=comment,
         )
         return state is not None
-

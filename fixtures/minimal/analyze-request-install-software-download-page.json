@@ -1,0 +1,38 @@
+{
+  "task_text": "安装示例软件并下载安装包",
+  "observation": {
+    "session_id": "mock-session-5c18e051",
+    "captured_at_utc": "2026-04-09T08:01:00Z",
+    "foreground_window_title": "示例软件下载 - Microsoft Edge",
+    "foreground_window_uia_name": "示例软件下载 - Microsoft Edge",
+    "foreground_window_uia_automation_id": "BrowserWindow",
+    "foreground_window_uia_class_name": "Chrome_WidgetWin_1",
+    "foreground_window_uia_control_type": "ControlType.Window",
+    "foreground_window_uia_is_enabled": true,
+    "foreground_window_uia_child_count": 3,
+    "foreground_window_uia_child_summary": "ControlType.Button:立即下载 | ControlType.Button:版本说明 | ControlType.Hyperlink:帮助",
+    "foreground_window_actionable_summary": "window_kind=window; title=示例软件下载 - Microsoft Edge; control_type=ControlType.Window; child_count=3",
+    "foreground_window_candidate_elements": [
+      {
+        "name": "立即下载",
+        "automation_id": "download_button",
+        "class_name": "Button",
+        "control_type": "ControlType.Button",
+        "is_enabled": true,
+        "is_offscreen": false,
+        "is_keyboard_focusable": true,
+        "has_keyboard_focus": false,
+        "ui_path": "foreground-window/child[0]",
+        "bounding_rect": {
+          "x": 980,
+          "y": 210,
+          "width": 160,
+          "height": 44
+        }
+      }
+    ],
+    "screen_width": 1280,
+    "screen_height": 720,
+    "screenshot_ref": "local://observation/install/080100"
+  }
+}

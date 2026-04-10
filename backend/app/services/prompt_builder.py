@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from pathlib import Path
 
 from app.contracts import AnalyzeRequest, ObservationCandidateElementDto
 
@@ -21,6 +22,10 @@ class StepPlannerPromptBuilder:
         task_intent_tags = self._infer_task_intent_tags(task_text)
         action_constraints = self._build_action_constraints()
         candidate_lines = self._format_candidates(observation.foreground_window_candidate_elements)
+        visual_fallback_hint = self._build_visual_fallback_hint(
+            screenshot_status=observation.screenshot_status,
+            screenshot_local_path=observation.screenshot_local_path,
+        )
         user_prompt = (
             "Task:\n"
             f"{task_text}\n\n"
@@ -42,6 +47,8 @@ class StepPlannerPromptBuilder:
             f"- screenshot_ref: {observation.screenshot_ref}\n\n"
             f"- screenshot_status: {observation.screenshot_status}\n"
             f"- screenshot_local_path: {observation.screenshot_local_path}\n\n"
+            "Visual Fallback Hint:\n"
+            f"{visual_fallback_hint}\n\n"
             "Candidate Elements:\n"
             f"{candidate_lines}"
         )
@@ -107,4 +114,23 @@ class StepPlannerPromptBuilder:
             "- action_type should follow snake_case, e.g. `open_target_window`, `confirm_in_window`, `search_entry`\n"
             "- action_type must not contain auto-click/auto-type/execute/remote-control semantics\n"
             "- action_type must represent one safe user step only"
+        )
+
+    @staticmethod
+    def _build_visual_fallback_hint(
+        *,
+        screenshot_status: str | None,
+        screenshot_local_path: str | None,
+    ) -> str:
+        status = (screenshot_status or "").strip() or "unknown"
+        raw_path = (screenshot_local_path or "").strip()
+        if not raw_path:
+            return f"- screenshot_available: false\n- screenshot_status: {status}"
+
+        screenshot_name = Path(raw_path).name
+        return (
+            "- screenshot_available: true\n"
+            f"- screenshot_status: {status}\n"
+            f"- screenshot_file_name: {screenshot_name}\n"
+            "- guidance: when UIA candidates are weak, use a conservative visual-confirmation step"
         )

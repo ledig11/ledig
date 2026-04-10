@@ -1524,6 +1524,249 @@ class SettingsTimeLanguageScenarioPlanner(StepPlanner):
         return None
 
 
+class SoftwareInstallScenarioPlanner(StepPlanner):
+    def __init__(
+        self,
+        fallback_planner: StepPlanner,
+        session_state_reader: Optional[Callable[[str], Optional[SessionStateEntry]]] = None,
+    ) -> None:
+        self._fallback_planner = fallback_planner
+        self._session_state_reader = session_state_reader
+
+    def analyze(self, request: AnalyzeRequest) -> StepPlannerResult:
+        if not self._is_software_install_task(request.task_text):
+            return self._fallback_planner.analyze(request)
+
+        observation = request.observation
+        normalized_task_key = request.task_text.strip().casefold()
+        session_state = self._read_session_state(observation.session_id)
+        download_candidate = self._find_download_candidate(observation.foreground_window_candidate_elements)
+        installer_candidate = self._find_installer_action_candidate(observation.foreground_window_candidate_elements)
+        on_browser_window = self._looks_like_browser_window(
+            observation.foreground_window_title,
+            observation.foreground_window_uia_class_name,
+            observation.foreground_window_actionable_summary,
+        )
+        on_installer_wizard = self._looks_like_installer_wizard(
+            observation.foreground_window_title,
+            observation.foreground_window_uia_name,
+            observation.foreground_window_actionable_summary,
+            observation.foreground_window_candidate_elements,
+        )
+
+        if (
+            session_state is not None
+            and session_state.last_feedback_type == "incorrect"
+            and session_state.current_action_type in {"download_installer", "launch_installer"}
+            and on_browser_window
+            and not on_installer_wizard
+        ):
+            response = NextStepResponse(
+                session_id=MockStepPlanner._build_session_id(normalized_task_key),
+                step_id="scenario-recover-installer-download",
+                instruction=(
+                    "上一步安装包下载或启动没有成功。请先确认仍在官方下载页面，"
+                    + (
+                        f"然后重新点击这个下载入口：{MockStepPlanner._format_candidate_label(download_candidate)}。"
+                        if download_candidate is not None
+                        else "然后重新定位“下载 / Download / Installer”按钮后继续。"
+                    )
+                ),
+                action_type="recover_installer_download",
+                requires_user_action=True,
+                highlight=HighlightDto(
+                    rect=MockStepPlanner._build_highlight_rect(download_candidate)
+                ),
+            )
+            return StepPlannerResult(
+                response=response,
+                planner_source="scenario",
+                prompt_version="scenario-software-install.v1",
+                response_schema_version="next-step-response.v1",
+                target_candidate_ui_path=download_candidate.ui_path if download_candidate is not None else None,
+                target_candidate_label=MockStepPlanner._format_candidate_label(download_candidate) if download_candidate is not None else None,
+            )
+
+        if on_installer_wizard:
+            if installer_candidate is not None:
+                response = NextStepResponse(
+                    session_id=MockStepPlanner._build_session_id(normalized_task_key),
+                    step_id="scenario-confirm-installer-wizard-step",
+                    instruction=(
+                        "你已经进入安装向导窗口。请先点击当前可继续按钮："
+                        f"{MockStepPlanner._format_candidate_label(installer_candidate)}。"
+                    ),
+                    action_type="confirm_installer_wizard_step",
+                    requires_user_action=True,
+                    highlight=HighlightDto(
+                        rect=MockStepPlanner._build_highlight_rect(installer_candidate)
+                    ),
+                )
+                return StepPlannerResult(
+                    response=response,
+                    planner_source="scenario",
+                    prompt_version="scenario-software-install.v1",
+                    response_schema_version="next-step-response.v1",
+                    target_candidate_ui_path=installer_candidate.ui_path,
+                    target_candidate_label=MockStepPlanner._format_candidate_label(installer_candidate),
+                )
+
+            response = NextStepResponse(
+                session_id=MockStepPlanner._build_session_id(normalized_task_key),
+                step_id="scenario-confirm-installer-wizard",
+                instruction="你已经进入安装向导。请先确认许可协议和安装路径等信息，然后点击“下一步/安装”。",
+                action_type="confirm_installer_wizard",
+                requires_user_action=True,
+                highlight=HighlightDto(
+                    rect=MockStepPlanner._build_highlight_rect(None)
+                ),
+            )
+            return StepPlannerResult(
+                response=response,
+                planner_source="scenario",
+                prompt_version="scenario-software-install.v1",
+                response_schema_version="next-step-response.v1",
+            )
+
+        if on_browser_window:
+            if download_candidate is not None:
+                response = NextStepResponse(
+                    session_id=MockStepPlanner._build_session_id(normalized_task_key),
+                    step_id="scenario-download-installer",
+                    instruction=(
+                        "当前看起来在下载页面。请先点击安装包下载入口："
+                        f"{MockStepPlanner._format_candidate_label(download_candidate)}。"
+                    ),
+                    action_type="download_installer",
+                    requires_user_action=True,
+                    highlight=HighlightDto(
+                        rect=MockStepPlanner._build_highlight_rect(download_candidate)
+                    ),
+                )
+                return StepPlannerResult(
+                    response=response,
+                    planner_source="scenario",
+                    prompt_version="scenario-software-install.v1",
+                    response_schema_version="next-step-response.v1",
+                    target_candidate_ui_path=download_candidate.ui_path,
+                    target_candidate_label=MockStepPlanner._format_candidate_label(download_candidate),
+                )
+
+            response = NextStepResponse(
+                session_id=MockStepPlanner._build_session_id(normalized_task_key),
+                step_id="scenario-open-download-page",
+                instruction="请先打开软件官方下载安装页面，并确认能看到“下载 / Download / Installer”等入口。",
+                action_type="open_download_page",
+                requires_user_action=True,
+                highlight=HighlightDto(
+                    rect=MockStepPlanner._build_highlight_rect(None)
+                ),
+            )
+            return StepPlannerResult(
+                response=response,
+                planner_source="scenario",
+                prompt_version="scenario-software-install.v1",
+                response_schema_version="next-step-response.v1",
+            )
+
+        response = NextStepResponse(
+            session_id=MockStepPlanner._build_session_id(normalized_task_key),
+            step_id="scenario-open-browser-for-install",
+            instruction="这是软件安装场景。请先打开浏览器并进入该软件的官方下载页面。",
+            action_type="open_browser_for_install",
+            requires_user_action=True,
+            highlight=HighlightDto(
+                rect=MockStepPlanner._build_highlight_rect(None)
+            ),
+        )
+        return StepPlannerResult(
+            response=response,
+            planner_source="scenario",
+            prompt_version="scenario-software-install.v1",
+            response_schema_version="next-step-response.v1",
+        )
+
+    def _read_session_state(self, session_id: Optional[str]) -> Optional[SessionStateEntry]:
+        if session_id is None or self._session_state_reader is None:
+            return None
+        try:
+            return self._session_state_reader(session_id)
+        except Exception:
+            return None
+
+    @staticmethod
+    def _is_software_install_task(task_text: str) -> bool:
+        normalized = task_text.casefold().replace(" ", "")
+        return any(
+            keyword in normalized
+            for keyword in (
+                "安装",
+                "install",
+                "installer",
+                "setup",
+                "下载",
+                "download",
+                "软件",
+            )
+        )
+
+    @staticmethod
+    def _looks_like_browser_window(
+        window_title: str,
+        class_name: str,
+        actionable_summary: str,
+    ) -> bool:
+        combined = " ".join(value for value in (window_title, class_name, actionable_summary) if value).casefold()
+        return any(
+            keyword in combined
+            for keyword in ("edge", "chrome", "firefox", "browser", "chromewidgetwin", "tab")
+        )
+
+    @staticmethod
+    def _looks_like_installer_wizard(
+        window_title: str,
+        uia_name: str,
+        actionable_summary: str,
+        candidates: list[ObservationCandidateElementDto],
+    ) -> bool:
+        combined = " ".join(value for value in (window_title, uia_name, actionable_summary) if value).casefold()
+        if any(keyword in combined for keyword in ("安装", "安装向导", "setup", "installer", "wizard")):
+            return True
+
+        signals = ("下一步", "next", "install", "安装", "i agree", "同意")
+        for candidate in candidates:
+            text = " ".join(
+                value for value in (candidate.name, candidate.automation_id, candidate.class_name) if value
+            ).casefold()
+            if any(signal in text for signal in signals):
+                return True
+        return False
+
+    @staticmethod
+    def _find_download_candidate(candidates: list[ObservationCandidateElementDto]) -> Optional[ObservationCandidateElementDto]:
+        for candidate in candidates:
+            text = " ".join(
+                value for value in (candidate.name, candidate.automation_id, candidate.class_name) if value
+            ).casefold()
+            if any(keyword in text for keyword in ("下载", "download", "installer", "setup", "立即下载")):
+                if candidate.bounding_rect.width > 0 and candidate.bounding_rect.height > 0:
+                    return candidate
+        return None
+
+    @staticmethod
+    def _find_installer_action_candidate(
+        candidates: list[ObservationCandidateElementDto],
+    ) -> Optional[ObservationCandidateElementDto]:
+        for candidate in candidates:
+            text = " ".join(
+                value for value in (candidate.name, candidate.automation_id, candidate.class_name) if value
+            ).casefold()
+            if any(keyword in text for keyword in ("下一步", "next", "install", "安装", "finish", "完成")):
+                if candidate.bounding_rect.width > 0 and candidate.bounding_rect.height > 0:
+                    return candidate
+        return None
+
+
 class ModelStepPlanner(StepPlanner):
     _ACTION_TYPE_PATTERN = re.compile(r"^[a-z][a-z0-9_]{1,63}$")
     _DISALLOWED_ACTION_TYPE_TERMS = (

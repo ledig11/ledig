@@ -1,0 +1,20 @@
+{
+  "task_text": "安装示例软件",
+  "observation": {
+    "session_id": "mock-session-5353d4a8",
+    "captured_at_utc": "2026-04-09T08:00:00Z",
+    "foreground_window_title": "Program Manager",
+    "foreground_window_uia_name": "Program Manager",
+    "foreground_window_uia_automation_id": "Progman",
+    "foreground_window_uia_class_name": "Progman",
+    "foreground_window_uia_control_type": "ControlType.Pane",
+    "foreground_window_uia_is_enabled": true,
+    "foreground_window_uia_child_count": 0,
+    "foreground_window_uia_child_summary": "no-direct-children",
+    "foreground_window_actionable_summary": "window_kind=shell; title=Program Manager; control_type=ControlType.Pane; child_count=0",
+    "foreground_window_candidate_elements": [],
+    "screen_width": 1280,
+    "screen_height": 720,
+    "screenshot_ref": "local://observation/install/080000"
+  }
+}
